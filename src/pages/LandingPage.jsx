@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Shield, MapPin, Bell, MessageSquare, Gauge, Users,
   AlertTriangle, ChevronRight, CheckCircle, Lock, Eye,
-  Star, ArrowRight, Zap, Heart, Menu, X, Globe, Smartphone
+  Star, ArrowRight, Zap, Heart, Menu, X, Smartphone
 } from 'lucide-react'
 import Button from '../components/ui/Button'
 
@@ -13,18 +13,18 @@ function scrollToSection(e, id) {
 }
 
 const features = [
-  { icon: MapPin, title: 'Live GPS Tracking', desc: 'Real-time vehicle tracking updated every 5 seconds.', color: 'bg-primary' },
-  { icon: Bell, title: 'Instant Alerts', desc: 'Pickup, drop-off and arrival notifications in seconds.', color: 'bg-blue-500' },
-  { icon: MessageSquare, title: 'Secure Chat', desc: 'Message your driver directly. No numbers shared.', color: 'bg-violet-500' },
-  { icon: Gauge, title: 'Speed Alerts', desc: 'Get notified if the driver exceeds your speed limit.', color: 'bg-orange-500' },
-  { icon: Users, title: 'Multi-Child', desc: 'Track multiple children across different routes.', color: 'bg-cyan-500' },
-  { icon: AlertTriangle, title: 'SOS Button', desc: 'One-tap emergency alert to your contacts.', color: 'bg-red-500' },
+  { icon: MapPin, title: 'Live GPS Tracking', desc: 'Real-time vehicle tracking updated every 5 seconds so you always know where your child is.', color: 'bg-primary' },
+  { icon: Bell, title: 'Instant Alerts', desc: 'Pickup, drop-off and school arrival notifications sent straight to your phone.', color: 'bg-blue-500' },
+  { icon: MessageSquare, title: 'Secure Chat', desc: 'Message your driver directly through the app. No phone numbers shared.', color: 'bg-violet-500' },
+  { icon: Gauge, title: 'Speed Alerts', desc: 'Set your own speed threshold and get notified if the driver exceeds it.', color: 'bg-orange-500' },
+  { icon: Users, title: 'Multi-Child Support', desc: 'Track multiple children across different routes and drivers from one account.', color: 'bg-cyan-500' },
+  { icon: AlertTriangle, title: 'Incident Reporting', desc: 'Drivers can report breakdowns, accidents or delays — you\'re informed instantly.', color: 'bg-red-500' },
 ]
 
 const plans = [
   { name: 'Basic', price: '15', desc: 'Essential tracking', features: ['Live GPS tracking', 'Push notifications', 'Trip history', 'In-app messaging', 'Speed alerts'], highlighted: false },
-  { name: 'Premium', price: '99', desc: 'Complete safety', features: ['Everything in Basic', 'Trip PDF export', 'Route replay', 'Priority support', 'Advanced analytics'], highlighted: true },
-  { name: 'Driver Pro', price: '49', desc: 'For operators', features: ['Route management', 'Child check-in/out', 'Broadcast messaging', 'Trip logs', 'Incident reporting'], highlighted: false },
+  { name: 'Premium', price: '99', desc: 'Complete safety suite', features: ['Everything in Basic', 'Trip PDF export', 'Route replay', 'Priority support', 'Advanced analytics'], highlighted: true },
+  { name: 'Driver Pro', price: '49', desc: 'For transport operators', features: ['Route management', 'Child check-in/out', 'Broadcast messaging', 'Trip logs', 'Incident reporting'], highlighted: false },
 ]
 
 export default function LandingPage() {
@@ -36,7 +36,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-black/5">
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="SafeRide Kids" className="h-[72px] w-auto" />
+            <img src="/logo.png" alt="SafeRide Kids" className="h-9 w-9 object-contain" />
             <span className="text-[17px] font-bold text-text-primary">SafeRide Kids</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
@@ -66,14 +66,21 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-16 pb-20 sm:pt-24 sm:pb-28 px-5">
-        <div className="max-w-6xl mx-auto">
-          <div className="max-w-2xl">
-            <h1 className="text-[40px] sm:text-[52px] font-bold text-text-primary leading-[1.08] tracking-tight">
-              Track Every Trip.<br /><span className="text-primary">Trust Every Ride.</span>
+      <section className="pt-16 pb-20 sm:pt-20 sm:pb-28 px-5">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full mb-6">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+              </span>
+              <span className="text-xs font-semibold text-primary">Now available across South Africa</span>
+            </div>
+            <h1 className="text-[36px] sm:text-[48px] lg:text-[52px] font-extrabold text-text-primary leading-[1.08] tracking-tight">
+              Track Every Trip.<br /><span className="gradient-text">Trust Every Ride.</span>
             </h1>
             <p className="mt-5 text-lg text-text-secondary max-w-lg leading-relaxed">
-              Real-time GPS tracking, instant alerts, and direct driver communication — built for South African families.
+              Real-time GPS tracking, instant alerts, and direct driver communication — purpose-built for South African school transport.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/register">
@@ -81,39 +88,54 @@ export default function LandingPage() {
               </Link>
               <Button variant="outline" size="xl" rounded onClick={(e) => scrollToSection(e, 'how-it-works')}>How It Works</Button>
             </div>
-            <p className="mt-4 text-sm text-text-muted">7-day free trial · No credit card needed</p>
+            <p className="mt-4 text-sm text-text-secondary">7-day free trial &middot; No credit card needed</p>
           </div>
 
           {/* App preview card */}
-          <div className="mt-14 max-w-sm sm:max-w-md">
-            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.12)] border border-black/5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <MapPin className="h-5 w-5 text-primary" />
+          <div className="lg:flex lg:justify-end">
+            <div className="w-full max-w-sm mx-auto lg:mx-0">
+              <div className="bg-white rounded-3xl p-5 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.12)] border border-black/5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-text-primary">Morning Route — Westville</p>
+                    <p className="text-xs text-text-secondary">Driver: John M. &middot; 6 children</p>
+                  </div>
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+                  </span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-text-primary">Morning Route — Westville</p>
-                  <p className="text-xs text-text-secondary">Driver: John M.</p>
+                <div className="bg-gradient-to-br from-emerald-50 to-background rounded-2xl h-36 flex items-center justify-center mb-4 relative overflow-hidden">
+                  {/* Simulated map UI */}
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-4 left-6 w-20 h-0.5 bg-primary rounded" />
+                    <div className="absolute top-4 left-[104px] w-12 h-0.5 bg-primary rounded rotate-45 origin-left" />
+                    <div className="absolute top-[38px] left-[138px] w-16 h-0.5 bg-primary rounded" />
+                  </div>
+                  <div className="text-center relative">
+                    <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mx-auto mb-1.5 shadow-lg shadow-primary/30">
+                      <Smartphone className="h-5 w-5 text-white" />
+                    </div>
+                    <p className="text-xs font-bold text-primary">Live Tracking</p>
+                    <p className="text-[10px] text-text-secondary mt-0.5">Updated 3s ago</p>
+                  </div>
                 </div>
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
-                </span>
-              </div>
-              <div className="bg-background rounded-2xl h-32 flex items-center justify-center mb-4">
-                <div className="text-center">
-                  <Smartphone className="h-6 w-6 text-text-muted mx-auto mb-1" />
-                  <p className="text-xs font-medium text-text-muted">Live Map</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5 p-2.5 bg-emerald-50 rounded-xl">
-                  <CheckCircle className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-semibold text-emerald-800">Sarah picked up at 7:05 AM</span>
-                </div>
-                <div className="flex items-center gap-2.5 p-2.5 bg-blue-50 rounded-xl">
-                  <Bell className="h-4 w-4 text-blue-500" />
-                  <span className="text-xs font-semibold text-blue-800">Arriving at school in 5 min</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2.5 p-2.5 bg-emerald-50 rounded-xl">
+                    <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs font-semibold text-emerald-800">Sarah picked up at 7:05 AM</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2.5 bg-blue-50 rounded-xl">
+                    <Bell className="h-4 w-4 text-blue-500 shrink-0" />
+                    <span className="text-xs font-semibold text-blue-800">Arriving at school in 5 min</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2.5 bg-orange-50 rounded-xl">
+                    <Gauge className="h-4 w-4 text-orange-500 shrink-0" />
+                    <span className="text-xs font-semibold text-orange-800">Speed: 52 km/h — within limit</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -124,9 +146,10 @@ export default function LandingPage() {
       {/* Features */}
       <section id="features" className="py-20 bg-background px-5">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-12">
+          <div className="text-center mb-12">
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Features</p>
             <h2 className="text-[28px] sm:text-[36px] font-bold text-text-primary tracking-tight">Everything for peace of mind</h2>
+            <p className="text-text-secondary mt-2 max-w-lg mx-auto">Built specifically for the safety needs of South African school transport.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map(f => {
@@ -148,29 +171,33 @@ export default function LandingPage() {
       {/* How It Works */}
       <section id="how-it-works" className="py-20 bg-white px-5">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-12">
+          <div className="text-center mb-12">
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">How It Works</p>
-            <h2 className="text-[28px] sm:text-[36px] font-bold text-text-primary tracking-tight">Start in under 2 minutes</h2>
+            <h2 className="text-[28px] sm:text-[36px] font-bold text-text-primary tracking-tight">Get started in under 2 minutes</h2>
           </div>
-          <div className="grid sm:grid-cols-3 gap-8 max-w-3xl">
+          <div className="grid sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {[
-              { n: '1', icon: Smartphone, title: 'Create account', desc: 'Sign up, add your children and their school details.' },
-              { n: '2', icon: Zap, title: 'Link to driver', desc: 'Enter the 6-digit code from your child\'s transport driver.' },
-              { n: '3', icon: Heart, title: 'Track every trip', desc: 'Get real-time GPS tracking and instant alerts.' },
-            ].map(step => {
+              { n: '1', icon: Smartphone, title: 'Create your account', desc: 'Sign up as a parent or driver. Add your children and their school details.' },
+              { n: '2', icon: Zap, title: 'Link to your driver', desc: 'Enter the 6-character code from your child\'s transport driver to connect.' },
+              { n: '3', icon: Heart, title: 'Track every trip', desc: 'Get real-time GPS tracking, speed alerts, and instant notifications.' },
+            ].map((step, i) => {
               const Icon = step.icon
               return (
-                <div key={step.n}>
-                  <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center mb-4">
-                    <Icon className="h-5 w-5 text-white" strokeWidth={2} />
+                <div key={step.n} className="text-center">
+                  <div className="relative inline-flex mb-4">
+                    <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center">
+                      <Icon className="h-6 w-6 text-white" strokeWidth={2} />
+                    </div>
+                    <span className="absolute -top-2 -right-2 w-6 h-6 bg-accent text-white text-xs font-bold rounded-full flex items-center justify-center">{step.n}</span>
                   </div>
+                  {i < 2 && <div className="hidden sm:block absolute" />}
                   <h3 className="text-[15px] font-bold text-text-primary mb-1">{step.title}</h3>
                   <p className="text-sm text-text-secondary leading-relaxed">{step.desc}</p>
                 </div>
               )
             })}
           </div>
-          <div className="mt-10">
+          <div className="mt-10 text-center">
             <Link to="/register"><Button size="lg" rounded>Get Started Free <ChevronRight className="h-4 w-4" /></Button></Link>
           </div>
         </div>
@@ -179,34 +206,34 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="py-20 bg-background px-5">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-12">
+          <div className="text-center mb-12">
             <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Pricing</p>
             <h2 className="text-[28px] sm:text-[36px] font-bold text-text-primary tracking-tight">Simple, fair pricing</h2>
             <p className="text-text-secondary mt-2">7-day free trial on all plans. No credit card needed.</p>
           </div>
-          <div className="grid sm:grid-cols-3 gap-4 max-w-4xl items-start">
+          <div className="grid sm:grid-cols-3 gap-4 max-w-4xl mx-auto items-stretch">
             {plans.map(plan => (
-              <div key={plan.name} className={`rounded-2xl p-5 flex flex-col ${
+              <div key={plan.name} className={`rounded-2xl p-6 flex flex-col ${
                 plan.highlighted
-                  ? 'bg-accent text-white sm:scale-[1.03] shadow-xl shadow-accent/20'
+                  ? 'bg-accent text-white ring-2 ring-primary shadow-xl'
                   : 'bg-white'
               }`}>
                 {plan.highlighted && (
                   <span className="inline-flex self-start items-center px-2.5 py-1 bg-primary rounded-lg text-[10px] font-bold text-white uppercase tracking-wider mb-3">
-                    <Star className="h-3 w-3 mr-1" /> Popular
+                    <Star className="h-3 w-3 mr-1" /> Most Popular
                   </span>
                 )}
                 <h3 className={`text-lg font-bold ${plan.highlighted ? 'text-white' : 'text-text-primary'}`}>{plan.name}</h3>
-                <p className={`text-sm ${plan.highlighted ? 'text-white/50' : 'text-text-secondary'}`}>{plan.desc}</p>
+                <p className={`text-sm ${plan.highlighted ? 'text-white/70' : 'text-text-secondary'}`}>{plan.desc}</p>
                 <div className="mt-4 mb-5">
                   <span className={`text-[36px] font-bold tracking-tight ${plan.highlighted ? 'text-white' : 'text-text-primary'}`}>R{plan.price}</span>
-                  <span className={`text-sm ${plan.highlighted ? 'text-white/50' : 'text-text-secondary'}`}>/mo</span>
+                  <span className={`text-sm ${plan.highlighted ? 'text-white/70' : 'text-text-secondary'}`}>/mo</span>
                 </div>
                 <ul className="space-y-2.5 mb-6 flex-1">
                   {plan.features.map(f => (
                     <li key={f} className="flex items-center gap-2 text-sm">
                       <CheckCircle className={`h-4 w-4 shrink-0 ${plan.highlighted ? 'text-primary' : 'text-primary'}`} />
-                      <span className={plan.highlighted ? 'text-white/80' : 'text-text-primary'}>{f}</span>
+                      <span className={plan.highlighted ? 'text-white/90' : 'text-text-primary'}>{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -226,23 +253,24 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="bg-accent rounded-3xl p-8 sm:p-12 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/3" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-full translate-y-1/3 -translate-x-1/4" />
             <div className="relative max-w-2xl mx-auto text-center">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">Your family's safety first</h2>
-              <p className="text-white/50 text-base mb-10">Fully POPIA compliant. Encrypted. No data sharing.</p>
-              <div className="grid sm:grid-cols-3 gap-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-3">Your family's safety comes first</h2>
+              <p className="text-white/70 text-base mb-10">Fully POPIA compliant. Encrypted data. No third-party sharing.</p>
+              <div className="grid sm:grid-cols-3 gap-8">
                 {[
-                  { icon: Lock, title: 'AES-256', desc: 'End-to-end encryption' },
-                  { icon: Shield, title: 'POPIA', desc: 'Full SA compliance' },
+                  { icon: Lock, title: 'Encrypted', desc: 'End-to-end data encryption' },
+                  { icon: Shield, title: 'POPIA Compliant', desc: 'Full South African compliance' },
                   { icon: Eye, title: 'Your Data', desc: 'Download or delete anytime' },
                 ].map(item => {
                   const Icon = item.icon
                   return (
                     <div key={item.title}>
-                      <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-2.5">
+                      <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-3">
                         <Icon className="h-5 w-5 text-primary" />
                       </div>
                       <p className="font-bold text-white text-sm">{item.title}</p>
-                      <p className="text-xs text-white/40 mt-0.5">{item.desc}</p>
+                      <p className="text-sm text-white/60 mt-0.5">{item.desc}</p>
                     </div>
                   )
                 })}
@@ -255,10 +283,10 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="py-20 bg-background px-5">
         <div className="max-w-xl mx-auto text-center">
-          <h2 className="text-[28px] sm:text-[36px] font-bold text-text-primary tracking-tight">Ready to start?</h2>
-          <p className="text-text-secondary mt-3 mb-8">Join parents across South Africa using SafeRide Kids.</p>
+          <h2 className="text-[28px] sm:text-[36px] font-bold text-text-primary tracking-tight">Ready to ride safe?</h2>
+          <p className="text-text-secondary mt-3 mb-8">Join parents and drivers across South Africa who trust SafeRide Kids.</p>
           <Link to="/register"><Button size="xl" rounded>Get Started Free <ArrowRight className="h-5 w-5" /></Button></Link>
-          <p className="mt-3 text-sm text-text-muted">7-day free trial · No credit card</p>
+          <p className="mt-3 text-sm text-text-secondary">7-day free trial &middot; No credit card needed</p>
         </div>
       </section>
 
@@ -268,15 +296,15 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-4 gap-10">
             <div className="sm:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <img src="/logo.png" alt="SafeRide Kids" className="h-20 w-auto brightness-0 invert" />
-                <span className="font-bold">SafeRide Kids</span>
+                <img src="/logo.png" alt="SafeRide Kids" className="h-9 w-9 object-contain brightness-0 invert" />
+                <span className="font-bold text-lg">SafeRide Kids</span>
               </div>
-              <p className="text-sm text-white/40 max-w-xs leading-relaxed">Safer school transport for every South African child. By KelyRa Tech (Pty) Ltd.</p>
-              <p className="text-sm text-white/30 mt-1">Durban, KwaZulu-Natal</p>
+              <p className="text-sm text-white/60 max-w-xs leading-relaxed">Safer school transport for every South African child. Built by KelyRa Tech (Pty) Ltd.</p>
+              <p className="text-sm text-white/40 mt-2">Durban, KwaZulu-Natal</p>
             </div>
             <div>
               <h4 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-3">Product</h4>
-              <ul className="space-y-2 text-sm text-white/40">
+              <ul className="space-y-2 text-sm text-white/60">
                 <li><button onClick={(e) => scrollToSection(e, 'features')} className="hover:text-white transition">Features</button></li>
                 <li><button onClick={(e) => scrollToSection(e, 'pricing')} className="hover:text-white transition">Pricing</button></li>
                 <li><button onClick={(e) => scrollToSection(e, 'how-it-works')} className="hover:text-white transition">How It Works</button></li>
@@ -284,15 +312,15 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-3">Legal</h4>
-              <ul className="space-y-2 text-sm text-white/40">
+              <ul className="space-y-2 text-sm text-white/60">
                 <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-white transition">Terms & Conditions</a></li>
                 <li><a href="mailto:privacy@kelyratech.co.za" className="hover:text-white transition">privacy@kelyratech.co.za</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/5 mt-10 pt-8 text-center text-xs text-white/25">
-            &copy; {new Date().getFullYear()} KelyRa Tech (Pty) Ltd
+          <div className="border-t border-white/10 mt-10 pt-8 text-center text-xs text-white/40">
+            &copy; {new Date().getFullYear()} KelyRa Tech (Pty) Ltd. All rights reserved.
           </div>
         </div>
       </footer>
