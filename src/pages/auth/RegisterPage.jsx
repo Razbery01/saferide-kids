@@ -57,7 +57,6 @@ export default function RegisterPage() {
         role: form.role,
         phone: form.phone,
       })
-      // If no session returned, email confirmation is required
       if (data?.user && !data?.session) {
         setShowConfirmation(true)
       } else {
@@ -90,45 +89,45 @@ export default function RegisterPage() {
 
   if (showConfirmation) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5">
-        <div className="w-full max-w-[360px] text-center">
-          <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5">
-            <CheckCircle className="h-8 w-8 text-success" />
-          </div>
-          <h2 className="text-2xl font-bold text-text-primary mb-2">Check your email</h2>
-          <p className="text-text-secondary mb-2">
-            We sent a confirmation link to
-          </p>
-          <p className="font-semibold text-text-primary mb-6">{form.email}</p>
-          <p className="text-sm text-text-secondary mb-8">
-            Click the link in the email to verify your account. Check your spam folder if you don't see it.
-          </p>
-
-          {resendSuccess && (
-            <div className="bg-success/5 text-success text-sm font-medium p-3.5 rounded-xl border border-success/10 mb-4">
-              Confirmation email resent!
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 flex flex-col items-center justify-center px-5">
+        <div className="w-full max-w-[380px]">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5">
+              <CheckCircle className="h-8 w-8 text-emerald-500" />
             </div>
-          )}
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Check your email</h2>
+            <p className="text-gray-500 mb-1">We sent a confirmation link to</p>
+            <p className="font-semibold text-gray-900 mb-6">{form.email}</p>
+            <p className="text-sm text-gray-400 mb-8">
+              Click the link in the email to verify your account. Check your spam folder if you don't see it.
+            </p>
 
-          {error && (
-            <div className="bg-danger/5 text-danger text-sm font-medium p-3.5 rounded-xl border border-danger/10 mb-4">{error}</div>
-          )}
+            {resendSuccess && (
+              <div className="bg-emerald-50 text-emerald-700 text-sm font-medium p-3.5 rounded-xl border border-emerald-100 mb-4">
+                Confirmation email resent!
+              </div>
+            )}
 
-          <button
-            onClick={handleResendConfirmation}
-            disabled={resending}
-            className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 p-3.5 rounded-xl border border-primary/10 transition-colors disabled:opacity-50 mb-4"
-          >
-            <RefreshCw className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} />
-            {resending ? 'Sending...' : 'Resend confirmation email'}
-          </button>
+            {error && (
+              <div className="bg-red-50 text-red-600 text-sm font-medium p-3.5 rounded-xl border border-red-100 mb-4">{error}</div>
+            )}
 
-          <Link
-            to="/login"
-            className="block w-full text-center text-sm font-medium text-text-secondary hover:text-text-primary py-3"
-          >
-            Back to Sign In
-          </Link>
+            <button
+              onClick={handleResendConfirmation}
+              disabled={resending}
+              className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 p-3.5 rounded-xl border border-primary/10 transition-all disabled:opacity-50 mb-4"
+            >
+              <RefreshCw className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} />
+              {resending ? 'Sending...' : 'Resend confirmation email'}
+            </button>
+
+            <Link
+              to="/login"
+              className="block w-full text-center text-sm font-medium text-gray-400 hover:text-gray-600 py-3 transition-colors"
+            >
+              Back to Sign In
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -136,15 +135,18 @@ export default function RegisterPage() {
 
   if (showConsent) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-sm">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 flex flex-col items-center justify-center px-5">
+        <div className="w-full max-w-[420px]">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-text-primary">POPIA Consent</h2>
-            <p className="text-text-secondary text-sm mt-1">Protection of Personal Information Act</p>
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <h2 className="text-xl font-extrabold text-gray-900">POPIA Consent</h2>
+            <p className="text-gray-500 text-sm mt-1">Protection of Personal Information Act</p>
           </div>
 
-          <div className="bg-surface rounded-2xl border border-border p-5 mb-6 max-h-64 overflow-y-auto text-sm text-text-secondary space-y-3">
-            <p className="font-medium text-text-primary">SafeRide Kids collects and processes your personal information to:</p>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6 max-h-64 overflow-y-auto text-sm text-gray-500 space-y-3">
+            <p className="font-medium text-gray-900">SafeRide Kids collects and processes your personal information to:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Provide real-time GPS tracking of your child's school transport</li>
               <li>Send push notifications about trip events (pickup, drop-off, arrival)</li>
@@ -152,21 +154,21 @@ export default function RegisterPage() {
               <li>Process subscription payments via PayFast</li>
               <li>Ensure the safety of children during transport</li>
             </ul>
-            <p className="font-medium text-text-primary">Data we collect:</p>
+            <p className="font-medium text-gray-900">Data we collect:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Your name, email address, and phone number</li>
               <li>Your child's name, school, and grade</li>
               <li>GPS location data during active trips (drivers only)</li>
               <li>In-app messages between parents and drivers</li>
             </ul>
-            <p className="font-medium text-text-primary">Your rights under POPIA:</p>
+            <p className="font-medium text-gray-900">Your rights under POPIA:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Access your data at any time via the app</li>
               <li>Request correction of inaccurate data</li>
               <li>Request deletion of your account and all associated data</li>
               <li>Object to certain data processing activities</li>
             </ul>
-            <p>Trip position data is retained for 90 days, then automatically purged. Contact <span className="text-primary">privacy@kelyratech.co.za</span> for data requests.</p>
+            <p>Trip position data is retained for 90 days, then automatically purged. Contact <span className="text-primary font-medium">privacy@kelyratech.co.za</span> for data requests.</p>
           </div>
 
           <label className="flex items-start gap-3 mb-6 cursor-pointer">
@@ -174,9 +176,9 @@ export default function RegisterPage() {
               type="checkbox"
               checked={consentAccepted}
               onChange={(e) => setConsentAccepted(e.target.checked)}
-              className="mt-0.5 h-5 w-5 rounded border-border text-primary focus:ring-primary"
+              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
             />
-            <span className="text-sm text-text-primary">
+            <span className="text-sm text-gray-700">
               I have read and agree to the SafeRide Kids{' '}
               <span className="text-primary font-medium">Privacy Policy</span> and{' '}
               <span className="text-primary font-medium">Terms & Conditions</span>.
@@ -185,7 +187,7 @@ export default function RegisterPage() {
           </label>
 
           {error && (
-            <div className="bg-danger-light text-danger text-sm p-3 rounded-xl mb-4">{error}</div>
+            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl mb-4 border border-red-100">{error}</div>
           )}
 
           <div className="flex gap-3">
@@ -207,93 +209,95 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 flex flex-col items-center justify-center px-5 py-8">
+      <div className="w-full max-w-[380px]">
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="SafeRide Kids" className="h-40 w-auto mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-text-primary">Create Account</h1>
-          <p className="text-text-secondary mt-1">Join SafeRide Kids today</p>
+          <img src="/logo.png" alt="SafeRide Kids" className="h-28 w-auto mx-auto mb-6" />
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create Account</h1>
+          <p className="text-gray-500 mt-2">Join SafeRide Kids today</p>
         </div>
 
-        <form onSubmit={handleContinue} className="space-y-4">
-          {error && (
-            <div className="bg-danger-light text-danger text-sm p-3 rounded-xl">{error}</div>
-          )}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <form onSubmit={handleContinue} className="space-y-5">
+            {error && (
+              <div className="bg-red-50 text-red-600 text-sm font-medium p-3 rounded-xl border border-red-100">{error}</div>
+            )}
 
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
-            {[
-              { role: ROLES.PARENT, label: 'Parent' },
-              { role: ROLES.DRIVER, label: 'Driver' },
-            ].map(({ role, label }) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => updateForm('role', role)}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  form.role === role
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+            <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl">
+              {[
+                { role: ROLES.PARENT, label: 'Parent' },
+                { role: ROLES.DRIVER, label: 'Driver' },
+              ].map(({ role, label }) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => updateForm('role', role)}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    form.role === role
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-          <Input
-            label="Full Name"
-            icon={User}
-            placeholder="Your full name"
-            value={form.fullName}
-            onChange={(e) => updateForm('fullName', e.target.value)}
-            required
-          />
+            <Input
+              label="Full Name"
+              icon={User}
+              placeholder="Your full name"
+              value={form.fullName}
+              onChange={(e) => updateForm('fullName', e.target.value)}
+              required
+            />
 
-          <Input
-            label="Email"
-            type="email"
-            icon={Mail}
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={(e) => updateForm('email', e.target.value)}
-            required
-          />
+            <Input
+              label="Email"
+              type="email"
+              icon={Mail}
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) => updateForm('email', e.target.value)}
+              required
+            />
 
-          <Input
-            label="Phone (optional)"
-            type="tel"
-            icon={Phone}
-            placeholder="+27 XX XXX XXXX"
-            value={form.phone}
-            onChange={(e) => updateForm('phone', e.target.value)}
-          />
+            <Input
+              label="Phone (optional)"
+              type="tel"
+              icon={Phone}
+              placeholder="+27 XX XXX XXXX"
+              value={form.phone}
+              onChange={(e) => updateForm('phone', e.target.value)}
+            />
 
-          <Input
-            label="Password"
-            type="password"
-            icon={Lock}
-            placeholder="Min 6 characters"
-            value={form.password}
-            onChange={(e) => updateForm('password', e.target.value)}
-            required
-          />
+            <Input
+              label="Password"
+              type="password"
+              icon={Lock}
+              placeholder="Min 6 characters"
+              value={form.password}
+              onChange={(e) => updateForm('password', e.target.value)}
+              required
+            />
 
-          <Input
-            label="Confirm Password"
-            type="password"
-            icon={Lock}
-            placeholder="Confirm your password"
-            value={form.confirmPassword}
-            onChange={(e) => updateForm('confirmPassword', e.target.value)}
-            required
-          />
+            <Input
+              label="Confirm Password"
+              type="password"
+              icon={Lock}
+              placeholder="Confirm your password"
+              value={form.confirmPassword}
+              onChange={(e) => updateForm('confirmPassword', e.target.value)}
+              required
+            />
 
-          <Button type="submit" fullWidth>
-            Continue
-          </Button>
-        </form>
+            <Button type="submit" fullWidth size="lg">
+              Continue
+            </Button>
+          </form>
+        </div>
 
-        <p className="text-center text-sm text-text-secondary mt-6">
+        <p className="text-center text-sm text-gray-500 mt-8">
           Already have an account?{' '}
           <Link to="/login" className="text-primary font-semibold hover:underline">
             Sign In

@@ -69,7 +69,6 @@ export default function LandingPage() {
       <section className="pt-16 pb-20 sm:pt-24 sm:pb-28 px-5">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-2xl">
-            <img src="/logo.png" alt="SafeRide Kids" className="h-56 sm:h-72 w-auto mb-6" />
             <h1 className="text-[40px] sm:text-[52px] font-bold text-text-primary leading-[1.08] tracking-tight">
               Track Every Trip.<br /><span className="text-primary">Trust Every Ride.</span>
             </h1>
