@@ -115,3 +115,8 @@ body {
 .fade-in {
   animation: fadeIn 0.4s ease-out;
 }
+
+/* Scroll offset for sticky nav */
+[id] {
+  scroll-margin-top: 5rem;
+}
