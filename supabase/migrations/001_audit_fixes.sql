@@ -116,7 +116,35 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- 6. Validate GPS coordinates at database level
+-- 6. Admin create user (for admin dashboard CRUD)
+-- ============================================
+
+CREATE OR REPLACE FUNCTION public.admin_create_user(
+  user_id UUID,
+  user_email TEXT,
+  user_full_name TEXT,
+  user_role TEXT,
+  user_phone TEXT DEFAULT NULL,
+  user_subscription_tier TEXT DEFAULT 'trial'
+)
+RETURNS VOID AS $$
+BEGIN
+  IF public.get_user_role() != 'admin' THEN
+    RAISE EXCEPTION 'Only admins can create users';
+  END IF;
+
+  INSERT INTO public.users (id, email, full_name, role, phone, subscription_tier, trial_ends_at, is_active)
+  VALUES (
+    user_id, user_email, user_full_name, user_role, user_phone,
+    user_subscription_tier,
+    (NOW() + INTERVAL '7 days'),
+    true
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 7. Validate GPS coordinates at database level
 -- ============================================
 
 ALTER TABLE public.routes

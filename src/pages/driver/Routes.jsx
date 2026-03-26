@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
-import Card, { CardTitle } from '../../components/ui/Card'
+import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import EmptyState from '../../components/ui/EmptyState'
-import { MapPin, Plus, Trash2, GripVertical, Users } from 'lucide-react'
-import { validateGPSCoordinate } from '../../lib/constants'
+import AddressSearch from '../../components/ui/AddressSearch'
+import { MapPin, Plus, Trash2, Users } from 'lucide-react'
 
 export default function DriverRoutes() {
   const { profile } = useAuth()
@@ -17,10 +17,10 @@ export default function DriverRoutes() {
   const [showAddStop, setShowAddStop] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [routeForm, setRouteForm] = useState({ name: '', school_name: '', school_lat: '', school_lng: '' })
-  const [stopForm, setStopForm] = useState({ address: '', lat: '', lng: '' })
+  const [routeForm, setRouteForm] = useState({ name: '', school_name: '', school_address: '', school_lat: null, school_lng: null })
+  const [stopForm, setStopForm] = useState({ address: '', lat: null, lng: null })
   const [error, setError] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState(null) // { type: 'route'|'stop', id }
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => { fetchRoutes() }, [profile])
 
@@ -35,27 +35,39 @@ export default function DriverRoutes() {
     setLoading(false)
   }
 
+  const handleSchoolLocation = useCallback((place) => {
+    setRouteForm(f => ({
+      ...f,
+      school_address: place.address,
+      school_lat: place.lat,
+      school_lng: place.lng,
+    }))
+  }, [])
+
+  const handleStopLocation = useCallback((place) => {
+    setStopForm({
+      address: place.address,
+      lat: place.lat,
+      lng: place.lng,
+    })
+  }, [])
+
   async function handleCreateRoute(e) {
     e.preventDefault()
     setSaving(true)
     setError('')
     try {
-      const lat = routeForm.school_lat ? parseFloat(routeForm.school_lat) : null
-      const lng = routeForm.school_lng ? parseFloat(routeForm.school_lng) : null
-      const gpsError = validateGPSCoordinate(lat, lng)
-      if (gpsError) throw new Error(gpsError)
-
-      const { error } = await supabase.from('routes').insert({
+      const { error: insertErr } = await supabase.from('routes').insert({
         driver_id: profile.id,
         name: routeForm.name,
         school_name: routeForm.school_name,
-        school_lat: lat,
-        school_lng: lng,
+        school_lat: routeForm.school_lat,
+        school_lng: routeForm.school_lng,
         is_active: true,
       })
-      if (error) throw error
+      if (insertErr) throw insertErr
       setShowCreate(false)
-      setRouteForm({ name: '', school_name: '', school_lat: '', school_lng: '' })
+      setRouteForm({ name: '', school_name: '', school_address: '', school_lat: null, school_lng: null })
       fetchRoutes()
     } catch (err) {
       setError(err.message?.includes('violates') ? 'Failed to create route. Please try again.' : err.message)
@@ -66,27 +78,23 @@ export default function DriverRoutes() {
 
   async function handleAddStop(e) {
     e.preventDefault()
+    if (!stopForm.address.trim()) return
     setSaving(true)
     setError('')
     try {
       const route = routes.find(r => r.id === showAddStop)
       const stopOrder = (route?.route_stops?.length || 0) + 1
 
-      const stopLat = stopForm.lat ? parseFloat(stopForm.lat) : null
-      const stopLng = stopForm.lng ? parseFloat(stopForm.lng) : null
-      const stopGpsError = validateGPSCoordinate(stopLat, stopLng)
-      if (stopGpsError) throw new Error(stopGpsError)
-
-      const { error } = await supabase.from('route_stops').insert({
+      const { error: insertErr } = await supabase.from('route_stops').insert({
         route_id: showAddStop,
         address: stopForm.address,
-        lat: stopLat,
-        lng: stopLng,
+        lat: stopForm.lat,
+        lng: stopForm.lng,
         stop_order: stopOrder,
       })
-      if (error) throw error
+      if (insertErr) throw insertErr
       setShowAddStop(null)
-      setStopForm({ address: '', lat: '', lng: '' })
+      setStopForm({ address: '', lat: null, lng: null })
       fetchRoutes()
     } catch (err) {
       setError(err.message?.includes('violates') ? 'Failed to add stop. Please try again.' : err.message)
@@ -175,10 +183,12 @@ export default function DriverRoutes() {
           {error && <p className="text-sm text-danger">{error}</p>}
           <Input label="Route Name" placeholder="e.g. Morning Route — Westville" value={routeForm.name} onChange={e => setRouteForm(f => ({...f, name: e.target.value}))} required />
           <Input label="School Name" placeholder="e.g. Westville Primary" value={routeForm.school_name} onChange={e => setRouteForm(f => ({...f, school_name: e.target.value}))} required />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="School Lat" type="number" step="any" placeholder="-29.8" value={routeForm.school_lat} onChange={e => setRouteForm(f => ({...f, school_lat: e.target.value}))} />
-            <Input label="School Lng" type="number" step="any" placeholder="31.0" value={routeForm.school_lng} onChange={e => setRouteForm(f => ({...f, school_lng: e.target.value}))} />
-          </div>
+          <AddressSearch
+            label="School Location"
+            placeholder="Search for school address..."
+            value={{ address: routeForm.school_address }}
+            onChange={handleSchoolLocation}
+          />
           <Button type="submit" fullWidth loading={saving}>Create Route</Button>
         </form>
       </Modal>
@@ -187,11 +197,13 @@ export default function DriverRoutes() {
       <Modal isOpen={!!showAddStop} onClose={() => setShowAddStop(null)} title="Add Pickup Stop">
         <form onSubmit={handleAddStop} className="space-y-4">
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Input label="Address" placeholder="123 Main St, Westville" value={stopForm.address} onChange={e => setStopForm(f => ({...f, address: e.target.value}))} required />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Latitude" type="number" step="any" value={stopForm.lat} onChange={e => setStopForm(f => ({...f, lat: e.target.value}))} />
-            <Input label="Longitude" type="number" step="any" value={stopForm.lng} onChange={e => setStopForm(f => ({...f, lng: e.target.value}))} />
-          </div>
+          <AddressSearch
+            label="Pickup Address"
+            placeholder="Search for pickup address..."
+            value={{ address: stopForm.address }}
+            onChange={handleStopLocation}
+            required
+          />
           <Button type="submit" fullWidth loading={saving}>Add Stop</Button>
         </form>
       </Modal>
