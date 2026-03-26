@@ -158,3 +158,51 @@ ALTER TABLE public.route_stops
 ALTER TABLE public.trip_positions
   ADD CONSTRAINT chk_positions_lat CHECK (lat >= -90 AND lat <= 90),
   ADD CONSTRAINT chk_positions_lng CHECK (lng >= -180 AND lng <= 180);
+
+-- ============================================
+-- 8. Emergency contacts table
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  relationship TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own emergency contacts" ON public.emergency_contacts
+  FOR ALL USING (auth.uid() = user_id OR public.get_user_role() = 'admin');
+
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_user ON public.emergency_contacts(user_id);
+
+-- ============================================
+-- 9. Notification preferences table
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS public.notification_preferences (
+  user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+  trip_started BOOLEAN DEFAULT true,
+  child_picked_up BOOLEAN DEFAULT true,
+  child_dropped_off BOOLEAN DEFAULT true,
+  at_school BOOLEAN DEFAULT true,
+  speed_alert BOOLEAN DEFAULT true,
+  route_deviation BOOLEAN DEFAULT true,
+  approach_alert BOOLEAN DEFAULT true,
+  broadcast_messages BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own notification prefs" ON public.notification_preferences
+  FOR ALL USING (auth.uid() = user_id OR public.get_user_role() = 'admin');
+
+-- ============================================
+-- 10. Add schedule column to routes
+-- ============================================
+
+ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS schedule TEXT DEFAULT 'both' CHECK (schedule IN ('morning', 'afternoon', 'both'));

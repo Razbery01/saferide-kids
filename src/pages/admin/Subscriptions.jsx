@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Card, { CardTitle } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
-import { CreditCard, TrendingUp } from 'lucide-react'
-import { format } from 'date-fns'
+import Button from '../../components/ui/Button'
+import { CreditCard, TrendingUp, Clock, XCircle } from 'lucide-react'
+import { format, addDays } from 'date-fns'
 import { SUBSCRIPTION_PRICES } from '../../lib/constants'
 
 export default function Subscriptions() {
@@ -27,6 +28,23 @@ export default function Subscriptions() {
     })
     setTierCounts(counts)
     setLoading(false)
+  }
+
+  async function handleExtendTrial(userId, currentTrialEnds) {
+    const newDate = addDays(currentTrialEnds ? new Date(currentTrialEnds) : new Date(), 7)
+    const { error } = await supabase
+      .from('users')
+      .update({ trial_ends_at: newDate.toISOString() })
+      .eq('id', userId)
+    if (!error) fetchData()
+  }
+
+  async function handleCancel(userId) {
+    const { error } = await supabase
+      .from('users')
+      .update({ subscription_tier: 'cancelled', is_active: false })
+      .eq('id', userId)
+    if (!error) fetchData()
   }
 
   const mrr = Object.entries(tierCounts).reduce((acc, [tier, count]) => {
@@ -67,6 +85,7 @@ export default function Subscriptions() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">Plan</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">Trial Ends</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -87,6 +106,28 @@ export default function Subscriptions() {
                     <Badge variant={user.is_active ? 'success' : 'danger'}>
                       {user.is_active ? 'Active' : 'Inactive'}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      {user.subscription_tier === 'trial' && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => handleExtendTrial(user.id, user.trial_ends_at)}
+                        >
+                          <Clock className="h-3.5 w-3.5" /> +7 days
+                        </Button>
+                      )}
+                      {user.is_active && user.subscription_tier !== 'cancelled' && (
+                        <Button
+                          size="xs"
+                          variant="danger"
+                          onClick={() => handleCancel(user.id)}
+                        >
+                          <XCircle className="h-3.5 w-3.5" /> Cancel
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

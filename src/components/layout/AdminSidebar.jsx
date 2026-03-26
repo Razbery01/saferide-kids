@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Car, MapPin, Shield,
-  CreditCard, FileText, LogOut
+  CreditCard, FileText, LogOut, Baby
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -11,6 +11,7 @@ const links = [
   { to: '/admin/drivers', icon: Car, label: 'Drivers' },
   { to: '/admin/trips', icon: MapPin, label: 'Live Trips' },
   { to: '/admin/safety', icon: Shield, label: 'Safety' },
+  { to: '/admin/children', icon: Baby, label: 'Children & Routes' },
   { to: '/admin/subscriptions', icon: CreditCard, label: 'Billing' },
   { to: '/admin/reports', icon: FileText, label: 'Reports' },
 ]

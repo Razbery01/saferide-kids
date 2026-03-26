@@ -12,28 +12,85 @@ export default function ParentDashboard() {
   const { profile } = useAuth()
   const [children, setChildren] = useState([])
   const [activeTrips, setActiveTrips] = useState([])
+  const [childStatuses, setChildStatuses] = useState({}) // { childId: 'at_home' | 'on_route' | 'at_school' }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchData() }, [profile])
 
+  // Subscribe to trips table for realtime status changes
+  useEffect(() => {
+    if (children.length === 0) return
+
+    const channel = supabase
+      .channel('dashboard-trip-status')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, () => {
+        fetchData()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [children])
+
   async function fetchData() {
     if (!profile) return
     try {
-      const { data: childData } = await supabase.from('children').select('*').eq('parent_id', profile.id)
+      const { data: childData } = await supabase.from('children').select('*, child_route_assignments(route_id)').eq('parent_id', profile.id)
       setChildren(childData || [])
       if (childData?.length > 0) {
         const childIds = childData.map(c => c.id)
-        const { data: assignments } = await supabase.from('child_route_assignments').select('route_id').in('child_id', childIds)
-        if (assignments?.length > 0) {
-          const routeIds = assignments.map(a => a.route_id)
+        const allAssignments = childData.flatMap(c => (c.child_route_assignments || []).map(a => ({ childId: c.id, routeId: a.route_id })))
+        const routeIds = [...new Set(allAssignments.map(a => a.routeId))]
+
+        if (routeIds.length > 0) {
           const { data: tripData } = await supabase.from('trips').select('*, routes(name)').in('route_id', routeIds).eq('status', 'active')
           setActiveTrips(tripData || [])
+
+          // Build child status map
+          const statuses = {}
+          for (const child of childData) {
+            const childRouteIds = (child.child_route_assignments || []).map(a => a.route_id)
+            const childActiveTrips = (tripData || []).filter(t => childRouteIds.includes(t.route_id))
+
+            if (childActiveTrips.length === 0) {
+              statuses[child.id] = 'at_home'
+            } else {
+              // Check if any active trip has an at_school event
+              const tripIds = childActiveTrips.map(t => t.id)
+              const { data: schoolEvents } = await supabase
+                .from('trip_events')
+                .select('id')
+                .in('trip_id', tripIds)
+                .eq('event_type', 'at_school')
+                .limit(1)
+
+              statuses[child.id] = schoolEvents?.length > 0 ? 'at_school' : 'on_route'
+            }
+          }
+          setChildStatuses(statuses)
+        } else {
+          setActiveTrips([])
+          const statuses = {}
+          childData.forEach(c => { statuses[c.id] = 'at_home' })
+          setChildStatuses(statuses)
         }
       }
     } catch (err) {
       console.error('Error fetching dashboard:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  function getStatusBadge(childId) {
+    const status = childStatuses[childId] || 'at_home'
+    switch (status) {
+      case 'on_route':
+        return <Badge variant="warning" dot>On Route</Badge>
+      case 'at_school':
+        return <Badge variant="info" dot>At School</Badge>
+      case 'at_home':
+      default:
+        return <Badge variant="success" dot>At Home</Badge>
     }
   }
 
@@ -152,7 +209,7 @@ export default function ParentDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="neutral" dot>Home</Badge>
+                  {getStatusBadge(child.id)}
                   <ChevronRight className="h-4 w-4 text-text-muted" />
                 </div>
               </Card>

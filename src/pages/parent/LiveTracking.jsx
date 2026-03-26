@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { ETA_REFRESH_INTERVAL } from '../../lib/constants'
 import LiveMap from '../../components/maps/LiveMap'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import { AlertTriangle, Gauge, Navigation } from 'lucide-react'
+import { AlertTriangle, Gauge, Navigation, Clock } from 'lucide-react'
 import { format } from 'date-fns'
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371 // km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 
 export default function LiveTracking() {
   const { profile } = useAuth()
@@ -18,6 +27,7 @@ export default function LiveTracking() {
   const [selectedChild, setSelectedChild] = useState(null)
   const [showSOS, setShowSOS] = useState(false)
   const [schoolPos, setSchoolPos] = useState(null)
+  const [eta, setEta] = useState(null) // ETA in minutes, or null
 
   useEffect(() => { fetchChildren() }, [profile])
 
@@ -123,6 +133,29 @@ export default function LiveTracking() {
 
   const vehiclePos = latestPosition ? { lat: latestPosition.lat, lng: latestPosition.lng } : null
 
+  // ETA calculation
+  useEffect(() => {
+    if (!activeTrip || !schoolPos) {
+      setEta(null)
+      return
+    }
+
+    function calculateEta() {
+      if (!latestPosition) {
+        setEta('waiting')
+        return
+      }
+      const distKm = haversine(latestPosition.lat, latestPosition.lng, schoolPos.lat, schoolPos.lng)
+      const speedKmh = latestPosition.speed_kmh > 0 ? latestPosition.speed_kmh : 40
+      const etaMinutes = (distKm / speedKmh) * 60
+      setEta(Math.max(1, Math.round(etaMinutes)))
+    }
+
+    calculateEta()
+    const interval = setInterval(calculateEta, ETA_REFRESH_INTERVAL)
+    return () => clearInterval(interval)
+  }, [activeTrip, latestPosition, schoolPos])
+
   return (
     <div className="space-y-4">
       {/* Child selector */}
@@ -166,6 +199,25 @@ export default function LiveTracking() {
           </div>
         )}
       </Card>
+
+      {/* ETA to school */}
+      {activeTrip && (
+        <Card className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+            <Clock className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-text-secondary">ETA to school</p>
+            {eta === 'waiting' ? (
+              <p className="text-sm font-bold text-text-primary">Waiting for GPS...</p>
+            ) : eta !== null ? (
+              <p className="text-sm font-bold text-text-primary">~{eta} min</p>
+            ) : (
+              <p className="text-sm font-bold text-text-primary">Calculating...</p>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Trip events */}
       {events.length > 0 && (

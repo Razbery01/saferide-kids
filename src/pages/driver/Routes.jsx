@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import EmptyState from '../../components/ui/EmptyState'
 import AddressSearch from '../../components/ui/AddressSearch'
-import { MapPin, Plus, Trash2, Users } from 'lucide-react'
+import { MapPin, Plus, Trash2, Users, Clock, Sun, Sunrise } from 'lucide-react'
 
 export default function DriverRoutes() {
   const { profile } = useAuth()
@@ -17,7 +17,7 @@ export default function DriverRoutes() {
   const [showAddStop, setShowAddStop] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [routeForm, setRouteForm] = useState({ name: '', school_name: '', school_address: '', school_lat: null, school_lng: null })
+  const [routeForm, setRouteForm] = useState({ name: '', school_name: '', school_address: '', school_lat: null, school_lng: null, schedule: 'both' })
   const [stopForm, setStopForm] = useState({ address: '', lat: null, lng: null })
   const [error, setError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -63,11 +63,12 @@ export default function DriverRoutes() {
         school_name: routeForm.school_name,
         school_lat: routeForm.school_lat,
         school_lng: routeForm.school_lng,
+        schedule: routeForm.schedule,
         is_active: true,
       })
       if (insertErr) throw insertErr
       setShowCreate(false)
-      setRouteForm({ name: '', school_name: '', school_address: '', school_lat: null, school_lng: null })
+      setRouteForm({ name: '', school_name: '', school_address: '', school_lat: null, school_lng: null, schedule: 'both' })
       fetchRoutes()
     } catch (err) {
       setError(err.message?.includes('violates') ? 'Failed to create route. Please try again.' : err.message)
@@ -143,6 +144,9 @@ export default function DriverRoutes() {
                 <p className="text-xs text-text-secondary">{route.school_name}</p>
               </div>
               <div className="flex items-center gap-2">
+                <Badge variant={route.schedule === 'morning' ? 'warning' : route.schedule === 'afternoon' ? 'info' : 'accent'}>
+                  {route.schedule === 'morning' ? 'AM' : route.schedule === 'afternoon' ? 'PM' : 'AM & PM'}
+                </Badge>
                 <Badge variant="primary">
                   <Users className="h-3 w-3 mr-1" />
                   {route.child_route_assignments?.length || 0} kids
@@ -189,6 +193,18 @@ export default function DriverRoutes() {
             value={{ address: routeForm.school_address }}
             onChange={handleSchoolLocation}
           />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-text-primary tracking-tight">Trip Schedule</label>
+            <select
+              value={routeForm.schedule}
+              onChange={e => setRouteForm(f => ({...f, schedule: e.target.value}))}
+              className="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 hover:border-gray-300"
+            >
+              <option value="morning">Morning only</option>
+              <option value="afternoon">Afternoon only</option>
+              <option value="both">Both (morning &amp; afternoon)</option>
+            </select>
+          </div>
           <Button type="submit" fullWidth loading={saving}>Create Route</Button>
         </form>
       </Modal>

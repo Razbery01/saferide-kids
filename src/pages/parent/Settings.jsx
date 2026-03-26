@@ -7,7 +7,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
-import { User, Plus, Trash2, Link2, CreditCard, Shield, Bell, Download, AlertTriangle } from 'lucide-react'
+import { User, Plus, Trash2, Link2, CreditCard, Shield, Bell, Download, AlertTriangle, Phone, Lock, Mail } from 'lucide-react'
 import { SPEED_THRESHOLD_DEFAULT, validateRouteCode } from '../../lib/constants'
 
 export default function ParentSettings() {
@@ -24,6 +24,29 @@ export default function ParentSettings() {
   const [error, setError] = useState('')
   const [notification, setNotification] = useState('')
   const [showRemoveChild, setShowRemoveChild] = useState(null)
+
+  // Emergency contacts state
+  const [emergencyContacts, setEmergencyContacts] = useState([])
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [contactForm, setContactForm] = useState({ name: '', phone: '', relationship: '' })
+
+  // Account security state
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showChangeEmail, setShowChangeEmail] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ current: '', newPassword: '', confirm: '' })
+  const [emailForm, setEmailForm] = useState({ newEmail: '' })
+
+  // Notification preferences state
+  const [notifPrefs, setNotifPrefs] = useState({
+    trip_started: true,
+    child_picked_up: true,
+    child_dropped_off: true,
+    at_school: true,
+    speed_alert: true,
+    route_deviation: true,
+    approach_alert: true,
+    broadcast_messages: true,
+  })
 
   useEffect(() => { fetchChildren() }, [profile])
 
@@ -168,6 +191,114 @@ export default function ParentSettings() {
     setNotification('Speed alert threshold updated.')
   }
 
+  // Emergency contacts
+  useEffect(() => { fetchEmergencyContacts() }, [profile])
+
+  async function fetchEmergencyContacts() {
+    if (!profile) return
+    const { data } = await supabase
+      .from('emergency_contacts')
+      .select('*')
+      .eq('user_id', profile.id)
+      .order('created_at')
+    setEmergencyContacts(data || [])
+  }
+
+  async function handleAddContact(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const { error } = await supabase.from('emergency_contacts').insert({
+        user_id: profile.id,
+        ...contactForm,
+      })
+      if (error) throw error
+      setShowAddContact(false)
+      setContactForm({ name: '', phone: '', relationship: '' })
+      fetchEmergencyContacts()
+      setNotification('Emergency contact added.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDeleteContact(contactId) {
+    await supabase.from('emergency_contacts').delete().eq('id', contactId)
+    fetchEmergencyContacts()
+    setNotification('Emergency contact removed.')
+  }
+
+  // Account security
+  async function handleChangePassword(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      if (passwordForm.newPassword !== passwordForm.confirm) {
+        throw new Error('New passwords do not match.')
+      }
+      if (passwordForm.newPassword.length < 6) {
+        throw new Error('Password must be at least 6 characters.')
+      }
+      const { error } = await supabase.auth.updateUser({ password: passwordForm.newPassword })
+      if (error) throw error
+      setShowChangePassword(false)
+      setPasswordForm({ current: '', newPassword: '', confirm: '' })
+      setNotification('Password updated successfully.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleChangeEmail(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      if (!emailForm.newEmail) throw new Error('Please enter a new email address.')
+      const { error } = await supabase.auth.updateUser({ email: emailForm.newEmail })
+      if (error) throw error
+      setShowChangeEmail(false)
+      setEmailForm({ newEmail: '' })
+      setNotification('Confirmation email sent to your new address. Please check your inbox.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Notification preferences
+  useEffect(() => { fetchNotifPrefs() }, [profile])
+
+  async function fetchNotifPrefs() {
+    if (!profile) return
+    const { data } = await supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', profile.id)
+      .single()
+    if (data) {
+      const { user_id, updated_at, ...prefs } = data
+      setNotifPrefs(prefs)
+    }
+  }
+
+  async function handleToggleNotifPref(key) {
+    const updated = { ...notifPrefs, [key]: !notifPrefs[key] }
+    setNotifPrefs(updated)
+    await supabase.from('notification_preferences').upsert({
+      user_id: profile.id,
+      ...updated,
+      updated_at: new Date().toISOString(),
+    })
+  }
+
   return (
     <div className="space-y-4">
       {/* Profile */}
@@ -276,6 +407,100 @@ export default function ParentSettings() {
         </div>
       </Card>
 
+      {/* Emergency Contacts */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <CardTitle>Emergency Contacts</CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAddContact(true)}
+            disabled={emergencyContacts.length >= 3}
+          >
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        </div>
+        <p className="text-xs text-text-secondary mb-3">Used by the SOS button. Max 3 contacts.</p>
+        {emergencyContacts.length === 0 ? (
+          <p className="text-sm text-text-secondary">No emergency contacts added yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {emergencyContacts.map(contact => (
+              <div key={contact.id} className="flex items-center gap-3 p-3 bg-background rounded-xl">
+                <div className="w-10 h-10 bg-gradient-to-br from-red-100 to-red-50 rounded-xl flex items-center justify-center">
+                  <Phone className="h-4 w-4 text-danger" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{contact.name}</p>
+                  <p className="text-xs text-text-secondary">{contact.phone}</p>
+                  {contact.relationship && (
+                    <p className="text-xs text-text-secondary">{contact.relationship}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDeleteContact(contact.id)}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-text-secondary hover:text-danger transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Notification Preferences */}
+      <Card>
+        <CardTitle>Notification Preferences</CardTitle>
+        <div className="mt-3 space-y-3">
+          {[
+            { key: 'trip_started', label: 'Trip started' },
+            { key: 'child_picked_up', label: 'Child picked up' },
+            { key: 'child_dropped_off', label: 'Child dropped off' },
+            { key: 'at_school', label: 'Arrived at school' },
+            { key: 'speed_alert', label: 'Speed alert' },
+            { key: 'route_deviation', label: 'Route deviation' },
+            { key: 'approach_alert', label: 'Driver approaching' },
+            { key: 'broadcast_messages', label: 'Broadcast messages' },
+          ].map(({ key, label }) => (
+            <div key={key} className="flex items-center justify-between py-1">
+              <span className="text-sm text-text-primary">{label}</span>
+              <button
+                onClick={() => handleToggleNotifPref(key)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  notifPrefs[key] ? 'bg-primary' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                    notifPrefs[key] ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Account Security */}
+      <Card>
+        <CardTitle>Account Security</CardTitle>
+        <div className="mt-3 space-y-2">
+          <button
+            onClick={() => { setShowChangePassword(true); setError('') }}
+            className="w-full text-left text-sm p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center gap-2.5"
+          >
+            <Lock className="h-4 w-4 text-text-secondary" /> Change Password
+          </button>
+          <button
+            onClick={() => { setShowChangeEmail(true); setError('') }}
+            className="w-full text-left text-sm p-2.5 rounded-xl hover:bg-gray-50 transition flex items-center gap-2.5"
+          >
+            <Mail className="h-4 w-4 text-text-secondary" /> Change Email
+          </button>
+        </div>
+      </Card>
+
       {/* Privacy & Data */}
       <Card>
         <CardTitle>Privacy & Data</CardTitle>
@@ -339,6 +564,38 @@ export default function ParentSettings() {
           <Button variant="outline" fullWidth onClick={() => setShowRemoveChild(null)}>Cancel</Button>
           <Button variant="danger" fullWidth onClick={confirmRemoveChild}>Remove</Button>
         </div>
+      </Modal>
+
+      {/* Add Emergency Contact Modal */}
+      <Modal isOpen={showAddContact} onClose={() => { setShowAddContact(false); setError('') }} title="Add Emergency Contact">
+        <form onSubmit={handleAddContact} className="space-y-4">
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Input label="Name" value={contactForm.name} onChange={(e) => setContactForm(f => ({...f, name: e.target.value}))} required />
+          <Input label="Phone Number" type="tel" value={contactForm.phone} onChange={(e) => setContactForm(f => ({...f, phone: e.target.value}))} required />
+          <Input label="Relationship (optional)" value={contactForm.relationship} onChange={(e) => setContactForm(f => ({...f, relationship: e.target.value}))} placeholder="e.g. Spouse, Grandparent" />
+          <Button type="submit" fullWidth loading={saving}>Add Contact</Button>
+        </form>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal isOpen={showChangePassword} onClose={() => { setShowChangePassword(false); setError('') }} title="Change Password">
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Input label="Current Password" type="password" value={passwordForm.current} onChange={(e) => setPasswordForm(f => ({...f, current: e.target.value}))} required />
+          <Input label="New Password" type="password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm(f => ({...f, newPassword: e.target.value}))} required />
+          <Input label="Confirm New Password" type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm(f => ({...f, confirm: e.target.value}))} required />
+          <Button type="submit" fullWidth loading={saving}>Update Password</Button>
+        </form>
+      </Modal>
+
+      {/* Change Email Modal */}
+      <Modal isOpen={showChangeEmail} onClose={() => { setShowChangeEmail(false); setError('') }} title="Change Email">
+        <form onSubmit={handleChangeEmail} className="space-y-4">
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <p className="text-sm text-text-secondary">A confirmation email will be sent to your new address.</p>
+          <Input label="New Email Address" type="email" value={emailForm.newEmail} onChange={(e) => setEmailForm({ newEmail: e.target.value })} required />
+          <Button type="submit" fullWidth loading={saving}>Update Email</Button>
+        </form>
       </Modal>
 
       {/* Notification toast */}

@@ -39,6 +39,7 @@ import LiveTrips from './pages/admin/LiveTrips'
 import SafetyReports from './pages/admin/SafetyReports'
 import Subscriptions from './pages/admin/Subscriptions'
 import Reports from './pages/admin/Reports'
+import ChildRouteManagement from './pages/admin/ChildRouteManagement'
 
 function HomeRoute() {
   const { user, profile, loading } = useAuth()
@@ -140,6 +141,7 @@ function App() {
             <Route path="safety" element={<SafetyReports />} />
             <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="children" element={<ChildRouteManagement />} />
           </Route>
 
           {/* Catch all */}

@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import Card, { CardTitle } from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
-import { Users, Car, Baby, MapPin, AlertTriangle, DollarSign } from 'lucide-react'
+import { Users, Car, Baby, MapPin, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react'
 import { format } from 'date-fns'
+import { SUBSCRIPTION_PRICES } from '../../lib/constants'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ parents: 0, drivers: 0, children: 0, activeTrips: 0 })
   const [recentAlerts, setRecentAlerts] = useState([])
   const [activeTrips, setActiveTrips] = useState([])
+  const [revenueData, setRevenueData] = useState({ mrr: 0, trialTotal: 0, trialConverted: 0 })
 
   useEffect(() => {
     fetchStats()
     fetchActiveTrips()
     fetchAlerts()
+    fetchRevenue()
   }, [])
 
   async function fetchStats() {
@@ -38,6 +41,37 @@ export default function AdminDashboard() {
       .eq('status', 'active')
       .limit(10)
     setActiveTrips(data || [])
+  }
+
+  async function fetchRevenue() {
+    const { data: users } = await supabase
+      .from('users')
+      .select('subscription_tier, trial_ends_at')
+
+    if (!users) return
+
+    // Calculate MRR
+    const tierCounts = {}
+    let trialTotal = 0
+    let trialConverted = 0
+    users.forEach(u => {
+      tierCounts[u.subscription_tier] = (tierCounts[u.subscription_tier] || 0) + 1
+      // Count users who ever had a trial (have trial_ends_at set)
+      if (u.trial_ends_at) {
+        trialTotal++
+        // If they are no longer on trial, they converted
+        if (u.subscription_tier !== 'trial') {
+          trialConverted++
+        }
+      }
+    })
+
+    const mrr = Object.entries(tierCounts).reduce((acc, [tier, count]) => {
+      const price = SUBSCRIPTION_PRICES[tier]?.amount || 0
+      return acc + price * count
+    }, 0)
+
+    setRevenueData({ mrr, trialTotal, trialConverted })
   }
 
   async function fetchAlerts() {
@@ -76,6 +110,37 @@ export default function AdminDashboard() {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* Revenue & Conversion */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-emerald-600 bg-emerald-100">
+              <DollarSign className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-primary">R{revenueData.mrr.toLocaleString()}</p>
+              <p className="text-sm text-text-secondary">Estimated MRR</p>
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-indigo-600 bg-indigo-100">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-primary">
+                {revenueData.trialTotal > 0
+                  ? `${Math.round((revenueData.trialConverted / revenueData.trialTotal) * 100)}%`
+                  : '—'}
+              </p>
+              <p className="text-sm text-text-secondary">Trial Conversion Rate</p>
+              <p className="text-xs text-text-secondary">{revenueData.trialConverted} of {revenueData.trialTotal} trial users</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
