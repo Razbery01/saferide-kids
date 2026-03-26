@@ -49,3 +49,34 @@ export const SPEED_THRESHOLD_DEFAULT = 80 // km/h
 export const GPS_UPDATE_INTERVAL = 5000 // 5 seconds
 export const ETA_REFRESH_INTERVAL = 30000 // 30 seconds
 export const TRIAL_DAYS = 7
+
+export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+export const ROUTE_CODE_REGEX = /^[A-Z0-9]{3,6}$/
+
+export function validatePassword(password) {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return 'Password must be at least 8 characters'
+  }
+  if (!PASSWORD_REGEX.test(password)) {
+    return 'Password must include uppercase, lowercase, and a number'
+  }
+  return null
+}
+
+export function validateGPSCoordinate(lat, lng) {
+  if (lat !== null && lat !== '' && (isNaN(lat) || lat < -90 || lat > 90)) {
+    return 'Latitude must be between -90 and 90'
+  }
+  if (lng !== null && lng !== '' && (isNaN(lng) || lng < -180 || lng > 180)) {
+    return 'Longitude must be between -180 and 180'
+  }
+  return null
+}
+
+export function validateRouteCode(code) {
+  if (!code || !ROUTE_CODE_REGEX.test(code)) {
+    return 'Route code must be 3-6 alphanumeric characters'
+  }
+  return null
+}

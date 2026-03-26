@@ -8,10 +8,10 @@ import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import { User, Plus, Trash2, Link2, CreditCard, Shield, Bell, Download, AlertTriangle } from 'lucide-react'
-import { SPEED_THRESHOLD_DEFAULT } from '../../lib/constants'
+import { SPEED_THRESHOLD_DEFAULT, validateRouteCode } from '../../lib/constants'
 
 export default function ParentSettings() {
-  const { profile, updateProfile, signOut } = useAuth()
+  const { profile, signOut } = useAuth()
   const [children, setChildren] = useState([])
   const [showAddChild, setShowAddChild] = useState(false)
   const [showLinkRoute, setShowLinkRoute] = useState(false)
@@ -22,6 +22,8 @@ export default function ParentSettings() {
   const [speedThreshold, setSpeedThreshold] = useState(SPEED_THRESHOLD_DEFAULT)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [notification, setNotification] = useState('')
+  const [showRemoveChild, setShowRemoveChild] = useState(null)
 
   useEffect(() => { fetchChildren() }, [profile])
 
@@ -29,10 +31,10 @@ export default function ParentSettings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('payment') === 'success') {
-      alert('Payment successful! Your subscription has been upgraded.')
+      setNotification('Payment successful! Your subscription has been upgraded.')
       window.history.replaceState({}, '', window.location.pathname)
     } else if (params.get('payment') === 'cancelled') {
-      alert('Payment was cancelled.')
+      setNotification('Payment was cancelled.')
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
@@ -71,10 +73,14 @@ export default function ParentSettings() {
     setSaving(true)
     setError('')
     try {
+      const trimmedCode = routeCode.trim().toUpperCase()
+      const codeError = validateRouteCode(trimmedCode)
+      if (codeError) throw new Error(codeError)
+
       const { data: driver, error: driverErr } = await supabase
         .from('drivers')
         .select('id, routes(id)')
-        .eq('route_code', routeCode.trim().toUpperCase())
+        .eq('route_code', trimmedCode)
         .single()
       if (driverErr || !driver) throw new Error('Invalid route code. Please check with your driver.')
       const routeId = driver.routes?.[0]?.id
@@ -97,17 +103,23 @@ export default function ParentSettings() {
   }
 
   async function handleRemoveChild(childId) {
-    if (!confirm('Remove this child from your account?')) return
+    setShowRemoveChild(childId)
+  }
+
+  async function confirmRemoveChild() {
+    const childId = showRemoveChild
+    setShowRemoveChild(null)
     await supabase.from('child_route_assignments').delete().eq('child_id', childId)
     await supabase.from('children').delete().eq('id', childId)
     fetchChildren()
   }
 
-  function handleUpgrade(plan) {
-    initiatePayment({
-      plan,
-      user: profile,
-    })
+  async function handleUpgrade(plan) {
+    try {
+      await initiatePayment({ plan, user: profile })
+    } catch (err) {
+      setNotification(err.message || 'Payment failed. Please try again.')
+    }
   }
 
   async function handleDownloadData() {
@@ -130,23 +142,30 @@ export default function ParentSettings() {
   }
 
   async function handleDeleteAccount() {
-    // Log deletion request
     await supabase.from('consent_records').insert({
       user_id: profile.id,
       consent_type: 'deletion_request',
       consent_version: '1.0',
     })
-    await supabase.from('users').update({ is_active: false }).eq('id', profile.id)
-    alert('Your account deletion request has been submitted. Your data will be purged within 48 hours as per POPIA requirements.')
-    signOut()
+
+    // Call server-side deletion function if available, otherwise deactivate
+    const { error: rpcErr } = await supabase.rpc('delete_user_data', { target_user_id: profile.id })
+    if (rpcErr) {
+      // Fallback: deactivate account
+      await supabase.from('users').update({ is_active: false }).eq('id', profile.id)
+    }
+
+    setShowDeleteAccount(false)
+    setNotification('Your account deletion request has been submitted. Your data will be purged within 48 hours as per POPIA requirements.')
+    setTimeout(() => signOut(), 2000)
   }
 
   async function handleSaveSpeedThreshold() {
-    // Store in user metadata via Supabase auth
-    await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       data: { speed_threshold: speedThreshold }
     })
-    alert('Speed alert threshold updated.')
+    if (error) { setNotification('Failed to save threshold.'); return }
+    setNotification('Speed alert threshold updated.')
   }
 
   return (
@@ -312,6 +331,23 @@ export default function ParentSettings() {
           </div>
         </div>
       </Modal>
+
+      {/* Remove Child confirmation modal */}
+      <Modal isOpen={!!showRemoveChild} onClose={() => setShowRemoveChild(null)} title="Remove Child" size="sm">
+        <p className="text-sm text-text-secondary mb-4">Remove this child from your account? This will also unlink them from any routes.</p>
+        <div className="flex gap-3">
+          <Button variant="outline" fullWidth onClick={() => setShowRemoveChild(null)}>Cancel</Button>
+          <Button variant="danger" fullWidth onClick={confirmRemoveChild}>Remove</Button>
+        </div>
+      </Modal>
+
+      {/* Notification toast */}
+      {notification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-in">
+          {notification}
+          <button onClick={() => setNotification('')} className="ml-3 text-white/60 hover:text-white">✕</button>
+        </div>
+      )}
     </div>
   )
 }

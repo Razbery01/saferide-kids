@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Modal from '../../components/ui/Modal'
 import { Play, Square, MapPin, Users, Clock, Copy, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -17,6 +18,8 @@ export default function DriverDashboard() {
   const [todayTrips, setTodayTrips] = useState([])
   const [codeCopied, setCodeCopied] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [showEndTrip, setShowEndTrip] = useState(false)
+  const [notification, setNotification] = useState('')
 
   useEffect(() => {
     fetchDriverData()
@@ -84,15 +87,20 @@ export default function DriverDashboard() {
       })
 
       setActiveTrip(data)
-    } catch (err) {
-      alert('Failed to start trip: ' + err.message)
+    } catch {
+      setNotification('Failed to start trip. Please try again.')
     } finally {
       setStarting(false)
     }
   }
 
   async function handleEndTrip() {
-    if (!activeTrip || !confirm('End this trip?')) return
+    if (!activeTrip) return
+    setShowEndTrip(true)
+  }
+
+  async function confirmEndTrip() {
+    setShowEndTrip(false)
 
     await supabase.from('trips').update({
       status: 'completed',
@@ -238,6 +246,23 @@ export default function DriverDashboard() {
               </Card>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* End Trip confirmation modal */}
+      <Modal isOpen={showEndTrip} onClose={() => setShowEndTrip(false)} title="End Trip" size="sm">
+        <p className="text-sm text-text-secondary mb-4">Are you sure you want to end this trip?</p>
+        <div className="flex gap-3">
+          <Button variant="outline" fullWidth onClick={() => setShowEndTrip(false)}>Cancel</Button>
+          <Button variant="danger" fullWidth onClick={confirmEndTrip}>End Trip</Button>
+        </div>
+      </Modal>
+
+      {/* Notification toast */}
+      {notification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-in">
+          {notification}
+          <button onClick={() => setNotification('')} className="ml-3 text-white/60 hover:text-white">✕</button>
         </div>
       )}
     </div>

@@ -8,6 +8,7 @@ import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
 import EmptyState from '../../components/ui/EmptyState'
 import { MapPin, Plus, Trash2, GripVertical, Users } from 'lucide-react'
+import { validateGPSCoordinate } from '../../lib/constants'
 
 export default function DriverRoutes() {
   const { profile } = useAuth()
@@ -19,6 +20,7 @@ export default function DriverRoutes() {
   const [routeForm, setRouteForm] = useState({ name: '', school_name: '', school_lat: '', school_lng: '' })
   const [stopForm, setStopForm] = useState({ address: '', lat: '', lng: '' })
   const [error, setError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null) // { type: 'route'|'stop', id }
 
   useEffect(() => { fetchRoutes() }, [profile])
 
@@ -38,12 +40,17 @@ export default function DriverRoutes() {
     setSaving(true)
     setError('')
     try {
+      const lat = routeForm.school_lat ? parseFloat(routeForm.school_lat) : null
+      const lng = routeForm.school_lng ? parseFloat(routeForm.school_lng) : null
+      const gpsError = validateGPSCoordinate(lat, lng)
+      if (gpsError) throw new Error(gpsError)
+
       const { error } = await supabase.from('routes').insert({
         driver_id: profile.id,
         name: routeForm.name,
         school_name: routeForm.school_name,
-        school_lat: routeForm.school_lat ? parseFloat(routeForm.school_lat) : null,
-        school_lng: routeForm.school_lng ? parseFloat(routeForm.school_lng) : null,
+        school_lat: lat,
+        school_lng: lng,
         is_active: true,
       })
       if (error) throw error
@@ -51,7 +58,7 @@ export default function DriverRoutes() {
       setRouteForm({ name: '', school_name: '', school_lat: '', school_lng: '' })
       fetchRoutes()
     } catch (err) {
-      setError(err.message)
+      setError(err.message?.includes('violates') ? 'Failed to create route. Please try again.' : err.message)
     } finally {
       setSaving(false)
     }
@@ -65,11 +72,16 @@ export default function DriverRoutes() {
       const route = routes.find(r => r.id === showAddStop)
       const stopOrder = (route?.route_stops?.length || 0) + 1
 
+      const stopLat = stopForm.lat ? parseFloat(stopForm.lat) : null
+      const stopLng = stopForm.lng ? parseFloat(stopForm.lng) : null
+      const stopGpsError = validateGPSCoordinate(stopLat, stopLng)
+      if (stopGpsError) throw new Error(stopGpsError)
+
       const { error } = await supabase.from('route_stops').insert({
         route_id: showAddStop,
         address: stopForm.address,
-        lat: stopForm.lat ? parseFloat(stopForm.lat) : null,
-        lng: stopForm.lng ? parseFloat(stopForm.lng) : null,
+        lat: stopLat,
+        lng: stopLng,
         stop_order: stopOrder,
       })
       if (error) throw error
@@ -77,23 +89,22 @@ export default function DriverRoutes() {
       setStopForm({ address: '', lat: '', lng: '' })
       fetchRoutes()
     } catch (err) {
-      setError(err.message)
+      setError(err.message?.includes('violates') ? 'Failed to add stop. Please try again.' : err.message)
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDeleteRoute(routeId) {
-    if (!confirm('Delete this route and all its stops?')) return
-    await supabase.from('route_stops').delete().eq('route_id', routeId)
-    await supabase.from('child_route_assignments').delete().eq('route_id', routeId)
-    await supabase.from('routes').delete().eq('id', routeId)
-    fetchRoutes()
-  }
-
-  async function handleDeleteStop(stopId) {
-    if (!confirm('Remove this stop?')) return
-    await supabase.from('route_stops').delete().eq('id', stopId)
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    if (deleteTarget.type === 'route') {
+      await supabase.from('route_stops').delete().eq('route_id', deleteTarget.id)
+      await supabase.from('child_route_assignments').delete().eq('route_id', deleteTarget.id)
+      await supabase.from('routes').delete().eq('id', deleteTarget.id)
+    } else {
+      await supabase.from('route_stops').delete().eq('id', deleteTarget.id)
+    }
+    setDeleteTarget(null)
     fetchRoutes()
   }
 
@@ -128,7 +139,7 @@ export default function DriverRoutes() {
                   <Users className="h-3 w-3 mr-1" />
                   {route.child_route_assignments?.length || 0} kids
                 </Badge>
-                <button onClick={() => handleDeleteRoute(route.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-text-secondary hover:text-danger transition">
+                <button onClick={() => setDeleteTarget({ type: 'route', id: route.id })} className="p-1.5 rounded-lg hover:bg-red-50 text-text-secondary hover:text-danger transition">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -144,7 +155,7 @@ export default function DriverRoutes() {
                       {idx + 1}
                     </span>
                     <span className="flex-1 text-text-primary">{stop.address}</span>
-                    <button onClick={() => handleDeleteStop(stop.id)} className="p-1 hover:bg-red-50 rounded text-text-secondary hover:text-danger">
+                    <button onClick={() => setDeleteTarget({ type: 'stop', id: stop.id })} className="p-1 hover:bg-red-50 rounded text-text-secondary hover:text-danger">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -183,6 +194,19 @@ export default function DriverRoutes() {
           </div>
           <Button type="submit" fullWidth loading={saving}>Add Stop</Button>
         </form>
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title={deleteTarget?.type === 'route' ? 'Delete Route' : 'Remove Stop'} size="sm">
+        <p className="text-sm text-text-secondary mb-4">
+          {deleteTarget?.type === 'route'
+            ? 'Delete this route and all its stops? Children linked to this route will be unlinked.'
+            : 'Remove this stop from the route?'}
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" fullWidth onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="danger" fullWidth onClick={confirmDelete}>Delete</Button>
+        </div>
       </Modal>
     </div>
   )

@@ -87,7 +87,6 @@ export function AuthProvider({ children }) {
         setProfile(data)
       }
     } catch (err) {
-      console.warn('Profile fetch fallback:', err?.message || err)
       // Fallback: build profile from auth metadata so login doesn't hang
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser()

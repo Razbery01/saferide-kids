@@ -5,8 +5,9 @@ import { supabase } from '../../lib/supabase'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
+import Modal from '../../components/ui/Modal'
 import { Square, CheckCircle, XCircle, Phone, Gauge, AlertTriangle, Send } from 'lucide-react'
-import { format } from 'date-fns'
+// date-fns used conditionally in renders
 import { GPS_UPDATE_INTERVAL, EVENT_TYPES } from '../../lib/constants'
 
 export default function ActiveTrip() {
@@ -19,37 +20,15 @@ export default function ActiveTrip() {
   const [showBroadcast, setShowBroadcast] = useState(false)
   const [broadcastMsg, setBroadcastMsg] = useState('')
   const [showIncident, setShowIncident] = useState(false)
+  const [showEndTrip, setShowEndTrip] = useState(false)
+  const [notification, setNotification] = useState('')
   const gpsIntervalRef = useRef(null)
 
-  useEffect(() => {
-    fetchActiveTrip()
-    return () => {
-      if (gpsIntervalRef.current) clearInterval(gpsIntervalRef.current)
+  function stopGPSBroadcast() {
+    if (gpsIntervalRef.current) {
+      clearInterval(gpsIntervalRef.current)
+      gpsIntervalRef.current = null
     }
-  }, [profile])
-
-  async function fetchActiveTrip() {
-    if (!profile) return
-    const { data } = await supabase
-      .from('trips')
-      .select('*, routes(*, route_stops(*), child_route_assignments(*, children(full_name, school_name)))')
-      .eq('driver_id', profile.id)
-      .eq('status', 'active')
-      .limit(1)
-      .single()
-
-    if (!data) { navigate('/driver'); return }
-    setTrip(data)
-
-    const kids = data.routes?.child_route_assignments?.map(a => ({
-      ...a.children,
-      assignment_id: a.id,
-      stop_id: a.stop_id,
-    })) || []
-    setChildren(kids)
-
-    // Start GPS broadcasting
-    startGPSBroadcast(data.id)
   }
 
   function startGPSBroadcast(tripId) {
@@ -69,7 +48,7 @@ export default function ActiveTrip() {
             recorded_at: new Date().toISOString(),
           })
         },
-        (err) => console.error('GPS error:', err),
+        () => { /* GPS unavailable */ },
         { enableHighAccuracy: true, timeout: 10000 }
       )
     }
@@ -78,38 +57,77 @@ export default function ActiveTrip() {
     gpsIntervalRef.current = setInterval(sendPosition, GPS_UPDATE_INTERVAL)
   }
 
+  useEffect(() => {
+    if (!profile) return
+    let cancelled = false
+
+    async function fetchActiveTrip() {
+      const { data } = await supabase
+        .from('trips')
+        .select('*, routes(*, route_stops(*), child_route_assignments(*, children(full_name, school_name)))')
+        .eq('driver_id', profile.id)
+        .eq('status', 'active')
+        .limit(1)
+        .single()
+
+      if (cancelled) return
+      if (!data) { navigate('/driver'); return }
+      setTrip(data)
+
+      const kids = data.routes?.child_route_assignments?.map(a => ({
+        ...a.children,
+        assignment_id: a.id,
+        stop_id: a.stop_id,
+      })) || []
+      setChildren(kids)
+
+      startGPSBroadcast(data.id)
+    }
+
+    fetchActiveTrip()
+    return () => { cancelled = true; stopGPSBroadcast() }
+  }, [profile, navigate])
+
   async function handleChildAction(child, action) {
     if (!trip) return
 
     const eventType = action === 'picked_up' ? EVENT_TYPES.CHILD_PICKED_UP : EVENT_TYPES.CHILD_DROPPED_OFF
 
-    await supabase.from('trip_events').insert({
+    const { error } = await supabase.from('trip_events').insert({
       trip_id: trip.id,
       child_id: child.id,
       event_type: eventType,
     })
 
+    if (error) { setNotification('Failed to record action. Please try again.'); return }
     setChildStatus(prev => ({ ...prev, [child.id]: action }))
   }
 
   async function handleAtSchool() {
     if (!trip) return
-    await supabase.from('trip_events').insert({
+    const { error } = await supabase.from('trip_events').insert({
       trip_id: trip.id,
       event_type: EVENT_TYPES.AT_SCHOOL,
     })
-    alert('All parents notified of arrival at school.')
+    if (error) { setNotification('Failed to record school arrival.'); return }
+    setNotification('All parents notified of arrival at school.')
   }
 
   async function handleEndTrip() {
-    if (!trip || !confirm('End this trip?')) return
+    if (!trip) return
+    setShowEndTrip(true)
+  }
 
-    clearInterval(gpsIntervalRef.current)
+  async function confirmEndTrip() {
+    stopGPSBroadcast()
+    setShowEndTrip(false)
 
-    await supabase.from('trips').update({
+    const { error: tripErr } = await supabase.from('trips').update({
       status: 'completed',
       ended_at: new Date().toISOString(),
     }).eq('id', trip.id)
+
+    if (tripErr) { setNotification('Failed to end trip. Please try again.'); return }
 
     await supabase.from('trip_events').insert({
       trip_id: trip.id,
@@ -143,18 +161,19 @@ export default function ActiveTrip() {
 
     setBroadcastMsg('')
     setShowBroadcast(false)
-    alert('Broadcast sent to all parents.')
+    setNotification('Broadcast sent to all parents.')
   }
 
   async function handleReportIncident(type) {
     if (!trip) return
-    await supabase.from('trip_events').insert({
+    const { error } = await supabase.from('trip_events').insert({
       trip_id: trip.id,
       event_type: 'incident',
       notes: type,
     })
     setShowIncident(false)
-    alert('Incident reported to Admin.')
+    if (error) { setNotification('Failed to report incident.'); return }
+    setNotification('Incident reported to Admin.')
   }
 
   if (!trip) return <div className="py-8 text-center text-text-secondary">Loading trip...</div>
@@ -273,26 +292,37 @@ export default function ActiveTrip() {
       )}
 
       {/* Incident modal */}
-      {showIncident && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowIncident(false)} />
-          <div className="relative bg-surface rounded-2xl w-full max-w-sm p-5">
-            <h3 className="font-semibold text-text-primary mb-3">Report Incident</h3>
-            <div className="space-y-2">
-              {['Vehicle breakdown', 'Accident', 'Route change', 'Child not at stop'].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => handleReportIncident(type)}
-                  className="w-full text-left p-3 rounded-xl border border-border hover:bg-gray-50 transition text-sm font-medium text-text-primary"
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-            <Button variant="ghost" fullWidth onClick={() => setShowIncident(false)} className="mt-3">
-              Cancel
-            </Button>
-          </div>
+      <Modal isOpen={showIncident} onClose={() => setShowIncident(false)} title="Report Incident" size="sm">
+        <div className="space-y-2">
+          {['Vehicle breakdown', 'Accident', 'Route change', 'Child not at stop'].map((type) => (
+            <button
+              key={type}
+              onClick={() => handleReportIncident(type)}
+              className="w-full text-left p-3 rounded-xl border border-border hover:bg-gray-50 transition text-sm font-medium text-text-primary"
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+        <Button variant="ghost" fullWidth onClick={() => setShowIncident(false)} className="mt-3">
+          Cancel
+        </Button>
+      </Modal>
+
+      {/* End Trip confirmation modal */}
+      <Modal isOpen={showEndTrip} onClose={() => setShowEndTrip(false)} title="End Trip" size="sm">
+        <p className="text-sm text-text-secondary mb-4">Are you sure you want to end this trip? GPS broadcasting will stop.</p>
+        <div className="flex gap-3">
+          <Button variant="outline" fullWidth onClick={() => setShowEndTrip(false)}>Cancel</Button>
+          <Button variant="danger" fullWidth onClick={confirmEndTrip}>End Trip</Button>
+        </div>
+      </Modal>
+
+      {/* Notification toast */}
+      {notification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-in">
+          {notification}
+          <button onClick={() => setNotification('')} className="ml-3 text-white/60 hover:text-white">✕</button>
         </div>
       )}
     </div>

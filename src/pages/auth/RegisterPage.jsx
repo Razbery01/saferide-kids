@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
-import { ROLES } from '../../lib/constants'
+import { ROLES, validatePassword } from '../../lib/constants'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -37,8 +37,9 @@ export default function RegisterPage() {
       setError('Passwords do not match')
       return
     }
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters')
+    const passwordError = validatePassword(form.password)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     setShowConsent(true)
@@ -275,7 +276,7 @@ export default function RegisterPage() {
               label="Password"
               type="password"
               icon={Lock}
-              placeholder="Min 6 characters"
+              placeholder="Min 8 characters (A-z, 0-9)"
               value={form.password}
               onChange={(e) => updateForm('password', e.target.value)}
               required

@@ -26,9 +26,9 @@ export default function Messages() {
   }, [messages])
 
   useEffect(() => {
-    if (!selectedConvo) return
+    if (!selectedConvo || !profile) return
     const channel = supabase
-      .channel(`messages-${selectedConvo.id}`)
+      .channel(`messages-${selectedConvo.id}-${profile.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -45,7 +45,7 @@ export default function Messages() {
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [selectedConvo])
+  }, [selectedConvo, profile])
 
   async function fetchConversations() {
     if (!profile) return

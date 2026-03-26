@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import ErrorBoundary from './components/ErrorBoundary'
 import { FullPageLoader } from './components/ui/LoadingSpinner'
 import { initFirebase, requestNotificationPermission, onPushMessage } from './lib/firebase'
 import ProtectedRoute from './components/layout/ProtectedRoute'
@@ -58,8 +59,8 @@ function NotificationInit() {
   useEffect(() => {
     if (user?.id) {
       requestNotificationPermission(user.id)
-      const unsub = onPushMessage((payload) => {
-        console.log('Push notification received:', payload)
+      const unsub = onPushMessage(() => {
+        // Notification handled by onPushMessage (browser notification + callback)
       })
       return unsub
     }
@@ -70,6 +71,7 @@ function NotificationInit() {
 
 function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <AuthProvider>
         <NotificationInit />
@@ -145,6 +147,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </ErrorBoundary>
   )
 }
 

@@ -19,9 +19,9 @@ export default function DriverMessages() {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   useEffect(() => {
-    if (!selectedParent) return
+    if (!selectedParent || !profile) return
     const channel = supabase
-      .channel(`driver-msgs-${selectedParent.id}`)
+      .channel(`driver-msgs-${selectedParent.id}-${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const msg = payload.new
         if ((msg.sender_id === profile.id && msg.receiver_id === selectedParent.id) ||
@@ -31,7 +31,7 @@ export default function DriverMessages() {
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [selectedParent])
+  }, [selectedParent, profile])
 
   async function fetchParents() {
     if (!profile) return

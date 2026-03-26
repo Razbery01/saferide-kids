@@ -21,25 +21,19 @@ export function initFirebase() {
     if ('Notification' in window && 'serviceWorker' in navigator) {
       messaging = getMessaging(app)
     }
-  } catch (err) {
-    console.warn('Firebase init failed:', err)
+  } catch {
+    // Firebase init failed — push notifications will be unavailable
   }
 
   return { app, messaging }
 }
 
 export async function requestNotificationPermission(userId) {
-  if (!messaging) {
-    console.warn('Firebase messaging not available')
-    return null
-  }
+  if (!messaging) return null
 
   try {
     const permission = await Notification.requestPermission()
-    if (permission !== 'granted') {
-      console.log('Notification permission denied')
-      return null
-    }
+    if (permission !== 'granted') return null
 
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
@@ -54,8 +48,7 @@ export async function requestNotificationPermission(userId) {
     }
 
     return token
-  } catch (err) {
-    console.error('Error getting push token:', err)
+  } catch {
     return null
   }
 }
