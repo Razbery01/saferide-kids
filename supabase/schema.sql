@@ -331,6 +331,28 @@ CREATE POLICY "Users can insert consent" ON public.consent_records
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- ============================================
+-- FUNCTIONS
+-- ============================================
+
+-- Profile creation RPC (used during email confirmation flow when
+-- the user has no active session and cannot satisfy RLS INSERT policies)
+CREATE OR REPLACE FUNCTION public.create_user_profile(
+  user_id UUID,
+  user_email TEXT,
+  user_full_name TEXT,
+  user_role TEXT,
+  user_phone TEXT DEFAULT NULL,
+  user_trial_ends_at TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO public.users (id, email, full_name, role, phone, subscription_tier, trial_ends_at, is_active)
+  VALUES (user_id, user_email, user_full_name, user_role, user_phone, 'trial', user_trial_ends_at, true)
+  ON CONFLICT (id) DO NOTHING;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
 -- REALTIME
 -- ============================================
 

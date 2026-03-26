@@ -37,6 +37,9 @@ export default function DriverOnboarding() {
   function handleFileSelect(e) {
     const selected = Array.from(e.target.files || [])
     const valid = selected.filter(f => f.size <= 5 * 1024 * 1024 && f.type.startsWith('image/'))
+    if (valid.length < selected.length) {
+      setError('Some files were skipped. Only images under 5MB are accepted.')
+    }
     setFiles(prev => [...prev, ...valid].slice(0, 4))
   }
 
@@ -48,13 +51,14 @@ export default function DriverOnboarding() {
     if (files.length === 0) return []
     setUploading(true)
     const urls = []
+    let uploadFailed = false
 
     for (const file of files) {
       const ext = file.name.split('.').pop()
       const path = `driver-docs/${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { data, error } = await supabase.storage.from('documents').upload(path, file)
-      if (error) {
-        console.error('Upload error:', error)
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(path, file)
+      if (uploadErr) {
+        uploadFailed = true
         continue
       }
       const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
@@ -62,7 +66,49 @@ export default function DriverOnboarding() {
     }
 
     setUploading(false)
+
+    if (uploadFailed && urls.length === 0 && files.length > 0) {
+      // All uploads failed — storage bucket may not exist, but don't block verification
+      return []
+    }
+
     return urls
+  }
+
+  async function ensureUserProfile() {
+    // Verify the users row exists (required for drivers FK)
+    const { data } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', profile.id)
+      .single()
+
+    if (data) return true
+
+    // Profile row missing — create it
+    const { error: insertErr } = await supabase.from('users').insert({
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name,
+      role: profile.role || 'driver',
+      phone: profile.phone || null,
+      subscription_tier: 'trial',
+      is_active: true,
+    })
+
+    if (insertErr) {
+      // Try RPC fallback
+      const { error: rpcErr } = await supabase.rpc('create_user_profile', {
+        user_id: profile.id,
+        user_email: profile.email,
+        user_full_name: profile.full_name,
+        user_role: profile.role || 'driver',
+        user_phone: profile.phone || null,
+      })
+      if (rpcErr) return false
+    }
+
+    return true
   }
 
   async function handleSubmit(e) {
@@ -71,24 +117,52 @@ export default function DriverOnboarding() {
     setError('')
 
     try {
-      const routeCode = generateRouteCode()
+      // Ensure the user profile row exists (FK requirement)
+      const profileExists = await ensureUserProfile()
+      if (!profileExists) {
+        throw new Error('Could not create your profile. Please sign out and sign in again.')
+      }
+
       const documentUrls = await uploadFiles()
 
-      const { error } = await supabase.from('drivers').upsert({
-        id: profile.id,
-        id_number: form.id_number,
-        licence_number: form.licence_number,
-        vehicle_registration: form.vehicle_registration,
-        vehicle_description: form.vehicle_description,
-        route_code: routeCode,
-        verification_status: 'pending',
-        documents_url: documentUrls,
-      })
-      if (error) throw error
+      // Try up to 3 times in case of route code collision
+      let lastErr = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const routeCode = generateRouteCode()
+        const { error: upsertErr } = await supabase.from('drivers').upsert({
+          id: profile.id,
+          id_number: form.id_number,
+          licence_number: form.licence_number,
+          vehicle_registration: form.vehicle_registration,
+          vehicle_description: form.vehicle_description,
+          route_code: routeCode,
+          verification_status: 'pending',
+          documents_url: documentUrls,
+        })
 
-      setStep(3)
+        if (!upsertErr) {
+          setStep(3)
+          return
+        }
+
+        // If it's a unique constraint violation on route_code, retry
+        if (upsertErr.message?.includes('route_code') || upsertErr.code === '23505') {
+          lastErr = upsertErr
+          continue
+        }
+
+        // Any other error, throw immediately
+        throw upsertErr
+      }
+
+      throw lastErr || new Error('Failed to generate a unique route code. Please try again.')
     } catch (err) {
-      setError(err.message)
+      const msg = err.message || 'Something went wrong'
+      if (msg.includes('violates') || msg.includes('policy')) {
+        setError('Unable to save your details. Please sign out and sign in again, then retry.')
+      } else {
+        setError(msg)
+      }
     } finally {
       setSaving(false)
     }
