@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 
@@ -10,6 +11,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showResend, setShowResend] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
   const { signIn, user, profile } = useAuth()
   const navigate = useNavigate()
 
@@ -23,13 +27,37 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setShowResend(false)
+    setResendSuccess(false)
     setLoading(true)
     try {
       await signIn({ email, password })
       setTimeout(() => { setLoading(false); navigate('/', { replace: true }) }, 3000)
     } catch (err) {
-      setError(err.message || 'Failed to sign in')
+      const msg = err.message || 'Failed to sign in'
+      setError(msg)
+      if (msg.toLowerCase().includes('email not confirmed')) {
+        setShowResend(true)
+      }
       setLoading(false)
+    }
+  }
+
+  async function handleResendConfirmation() {
+    setResending(true)
+    setResendSuccess(false)
+    try {
+      const { error: resendErr } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      })
+      if (resendErr) throw resendErr
+      setResendSuccess(true)
+      setError('')
+    } catch (err) {
+      setError(err.message || 'Failed to resend confirmation email')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -52,6 +80,24 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-danger/5 text-danger text-sm font-medium p-3.5 rounded-xl border border-danger/10">{error}</div>
+            )}
+
+            {resendSuccess && (
+              <div className="bg-success/5 text-success text-sm font-medium p-3.5 rounded-xl border border-success/10">
+                Confirmation email sent! Check your inbox and spam folder.
+              </div>
+            )}
+
+            {showResend && !resendSuccess && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 p-3 rounded-xl border border-primary/10 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} />
+                {resending ? 'Sending...' : 'Resend confirmation email'}
+              </button>
             )}
 
             <Input

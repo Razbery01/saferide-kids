@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, Phone, Shield } from 'lucide-react'
+import { Mail, Lock, User, Phone, Shield, RefreshCw, CheckCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import { ROLES } from '../../lib/constants'
@@ -17,6 +18,9 @@ export default function RegisterPage() {
   })
   const [showConsent, setShowConsent] = useState(false)
   const [consentAccepted, setConsentAccepted] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
@@ -46,20 +50,88 @@ export default function RegisterPage() {
     setError('')
 
     try {
-      await signUp({
+      const data = await signUp({
         email: form.email,
         password: form.password,
         fullName: form.fullName,
         role: form.role,
         phone: form.phone,
       })
-      navigate(form.role === ROLES.PARENT ? '/parent' : '/driver/onboarding')
+      // If no session returned, email confirmation is required
+      if (data?.user && !data?.session) {
+        setShowConfirmation(true)
+      } else {
+        navigate(form.role === ROLES.PARENT ? '/parent' : '/driver/onboarding')
+      }
     } catch (err) {
       setError(err.message || 'Registration failed')
       setShowConsent(false)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleResendConfirmation() {
+    setResending(true)
+    setResendSuccess(false)
+    try {
+      const { error: resendErr } = await supabase.auth.resend({
+        type: 'signup',
+        email: form.email,
+      })
+      if (resendErr) throw resendErr
+      setResendSuccess(true)
+    } catch (err) {
+      setError(err.message || 'Failed to resend confirmation email')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (showConfirmation) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5">
+        <div className="w-full max-w-[360px] text-center">
+          <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5">
+            <CheckCircle className="h-8 w-8 text-success" />
+          </div>
+          <h2 className="text-2xl font-bold text-text-primary mb-2">Check your email</h2>
+          <p className="text-text-secondary mb-2">
+            We sent a confirmation link to
+          </p>
+          <p className="font-semibold text-text-primary mb-6">{form.email}</p>
+          <p className="text-sm text-text-secondary mb-8">
+            Click the link in the email to verify your account. Check your spam folder if you don't see it.
+          </p>
+
+          {resendSuccess && (
+            <div className="bg-success/5 text-success text-sm font-medium p-3.5 rounded-xl border border-success/10 mb-4">
+              Confirmation email resent!
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-danger/5 text-danger text-sm font-medium p-3.5 rounded-xl border border-danger/10 mb-4">{error}</div>
+          )}
+
+          <button
+            onClick={handleResendConfirmation}
+            disabled={resending}
+            className="w-full flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 p-3.5 rounded-xl border border-primary/10 transition-colors disabled:opacity-50 mb-4"
+          >
+            <RefreshCw className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} />
+            {resending ? 'Sending...' : 'Resend confirmation email'}
+          </button>
+
+          <Link
+            to="/login"
+            className="block w-full text-center text-sm font-medium text-text-secondary hover:text-text-primary py-3"
+          >
+            Back to Sign In
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   if (showConsent) {
