@@ -130,6 +130,12 @@ export default function LoginPage() {
                 Sign In <ArrowRight className="h-4 w-4" />
               </Button>
             </form>
+
+            <div className="mt-4 text-center">
+              <Link to="/forgot-password" className="text-sm text-gray-400 hover:text-primary font-medium transition-colors">
+                Forgot your password?
+              </Link>
+            </div>
           </div>
 
           <div className="mt-8 text-center">
