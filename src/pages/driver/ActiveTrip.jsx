@@ -22,7 +22,9 @@ export default function ActiveTrip() {
   const [showIncident, setShowIncident] = useState(false)
   const [showEndTrip, setShowEndTrip] = useState(false)
   const [notification, setNotification] = useState('')
+  const [gpsStatus, setGpsStatus] = useState('waiting') // waiting | active | denied | unavailable
   const gpsIntervalRef = useRef(null)
+  const gpsFailCount = useRef(0)
 
   function stopGPSBroadcast() {
     if (gpsIntervalRef.current) {
@@ -32,11 +34,16 @@ export default function ActiveTrip() {
   }
 
   function startGPSBroadcast(tripId) {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) {
+      setGpsStatus('unavailable')
+      return
+    }
 
     function sendPosition() {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
+          gpsFailCount.current = 0
+          setGpsStatus('active')
           const speed = (pos.coords.speed || 0) * 3.6 // m/s to km/h
           setCurrentSpeed(Math.round(speed))
 
@@ -48,7 +55,17 @@ export default function ActiveTrip() {
             recorded_at: new Date().toISOString(),
           })
         },
-        () => { /* GPS unavailable */ },
+        (err) => {
+          gpsFailCount.current++
+          if (err.code === 1) {
+            setGpsStatus('denied')
+            setNotification('Location access denied. Parents cannot see your position. Please enable location in browser settings.')
+            stopGPSBroadcast()
+          } else if (gpsFailCount.current >= 3) {
+            setGpsStatus('unavailable')
+            setNotification('GPS signal lost. Retrying...')
+          }
+        },
         { enableHighAccuracy: true, timeout: 10000 }
       )
     }
@@ -198,6 +215,26 @@ export default function ActiveTrip() {
           </div>
         </div>
       </Card>
+
+      {/* GPS status banner */}
+      {gpsStatus === 'denied' && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+          <div className="w-2 h-2 bg-red-500 rounded-full shrink-0" />
+          <p className="text-xs text-red-800 font-medium">Location access denied. Parents cannot track this trip. Enable location in browser settings.</p>
+        </div>
+      )}
+      {gpsStatus === 'unavailable' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
+          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse shrink-0" />
+          <p className="text-xs text-amber-800 font-medium">GPS signal weak. Trying to reconnect...</p>
+        </div>
+      )}
+      {gpsStatus === 'active' && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <p className="text-xs text-green-700 font-medium">GPS broadcasting to parents</p>
+        </div>
+      )}
 
       {/* Child manifest */}
       <div>

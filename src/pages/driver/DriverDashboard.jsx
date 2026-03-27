@@ -6,7 +6,7 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
-import { Play, Square, MapPin, Users, Clock, Copy, CheckCircle } from 'lucide-react'
+import { Play, Square, MapPin, Users, Clock, Copy, CheckCircle, Navigation } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function DriverDashboard() {
@@ -20,6 +20,18 @@ export default function DriverDashboard() {
   const [starting, setStarting] = useState(false)
   const [showEndTrip, setShowEndTrip] = useState(false)
   const [notification, setNotification] = useState('')
+  const [locationGranted, setLocationGranted] = useState(null)
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false)
+  const [pendingTrip, setPendingTrip] = useState(null)
+
+  // Check location permission state on mount
+  useEffect(() => {
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(result => {
+        setLocationGranted(result.state === 'granted')
+      }).catch(() => {})
+    }
+  }, [])
 
   useEffect(() => {
     fetchDriverData()
@@ -67,7 +79,50 @@ export default function DriverDashboard() {
     }
   }
 
+  async function requestLocationPermission() {
+    if (!navigator.geolocation) {
+      setNotification('Location services are not available on this device.')
+      return false
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        () => { setLocationGranted(true); resolve(true) },
+        (err) => {
+          setLocationGranted(false)
+          if (err.code === 1) {
+            setNotification('Location permission denied. Please enable location access in your browser settings to start trips.')
+          } else {
+            setNotification('Unable to get your location. Please check GPS is enabled.')
+          }
+          resolve(false)
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    })
+  }
+
   async function handleStartTrip(routeId, tripType) {
+    // Check location permission before starting
+    if (locationGranted === null || locationGranted === false) {
+      setPendingTrip({ routeId, tripType })
+      setShowLocationPrompt(true)
+      return
+    }
+
+    await startTrip(routeId, tripType)
+  }
+
+  async function handleLocationGranted() {
+    setShowLocationPrompt(false)
+    const granted = await requestLocationPermission()
+    if (granted && pendingTrip) {
+      await startTrip(pendingTrip.routeId, pendingTrip.tripType)
+      setPendingTrip(null)
+    }
+  }
+
+  async function startTrip(routeId, tripType) {
     setStarting(true)
     try {
       const { data, error } = await supabase.from('trips').insert({
@@ -80,7 +135,6 @@ export default function DriverDashboard() {
 
       if (error) throw error
 
-      // Create trip_started event
       await supabase.from('trip_events').insert({
         trip_id: data.id,
         event_type: 'trip_started',
@@ -248,6 +302,27 @@ export default function DriverDashboard() {
           </div>
         </div>
       )}
+
+      {/* Location permission prompt */}
+      <Modal isOpen={showLocationPrompt} onClose={() => setShowLocationPrompt(false)} title="Location Access Required" size="sm">
+        <div className="text-center">
+          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Navigation className="h-7 w-7 text-primary" />
+          </div>
+          <p className="text-sm text-text-secondary mb-2">
+            SafeRide Kids needs access to your location to broadcast GPS coordinates to parents during trips.
+          </p>
+          <p className="text-xs text-text-muted mb-6">
+            Your location is only tracked while a trip is active and is never shared outside the app.
+          </p>
+          <Button fullWidth onClick={handleLocationGranted}>
+            <Navigation className="h-4 w-4" /> Allow Location Access
+          </Button>
+          <button onClick={() => setShowLocationPrompt(false)} className="mt-3 text-sm text-text-secondary hover:text-text-primary transition w-full text-center">
+            Not now
+          </button>
+        </div>
+      </Modal>
 
       {/* End Trip confirmation modal */}
       <Modal isOpen={showEndTrip} onClose={() => setShowEndTrip(false)} title="End Trip" size="sm">
