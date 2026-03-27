@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Clock, MessageSquare, Plus, ChevronRight, Users, Shield, Navigation, Sparkles, Settings, AlertTriangle } from 'lucide-react'
+import { MapPin, Clock, MessageSquare, Plus, ChevronRight, Users, Shield, Navigation, Sparkles, Settings, AlertTriangle, UserPlus } from 'lucide-react'
+import InviteModal from '../../components/InviteModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import Card from '../../components/ui/Card'
@@ -12,8 +13,9 @@ export default function ParentDashboard() {
   const { profile } = useAuth()
   const [children, setChildren] = useState([])
   const [activeTrips, setActiveTrips] = useState([])
-  const [childStatuses, setChildStatuses] = useState({}) // { childId: 'at_home' | 'on_route' | 'at_school' }
+  const [childStatuses, setChildStatuses] = useState({})
   const [loading, setLoading] = useState(true)
+  const [showInvite, setShowInvite] = useState(false)
 
   useEffect(() => { fetchData() }, [profile])
 
@@ -230,6 +232,26 @@ export default function ParentDashboard() {
           </div>
         </div>
       </Card>
+
+      {/* Invite driver */}
+      <Card hover onClick={() => setShowInvite(true)} className="cursor-pointer">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+            <UserPlus className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-text-primary">Invite a Driver</p>
+            <p className="text-xs text-text-secondary mt-0.5">Know a school transport driver? Invite them to SafeRide Kids.</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-text-muted" />
+        </div>
+      </Card>
+
+      <InviteModal
+        isOpen={showInvite}
+        onClose={() => setShowInvite(false)}
+        inviteType="parent_invites_driver"
+      />
     </div>
   )
 }

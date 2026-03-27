@@ -6,8 +6,9 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
-import { Play, Square, MapPin, Users, Clock, Copy, CheckCircle, Navigation } from 'lucide-react'
+import { Play, Square, MapPin, Users, Clock, Copy, CheckCircle, Navigation, UserPlus } from 'lucide-react'
 import { format } from 'date-fns'
+import InviteModal from '../../components/InviteModal'
 
 export default function DriverDashboard() {
   const { profile } = useAuth()
@@ -23,6 +24,7 @@ export default function DriverDashboard() {
   const [locationGranted, setLocationGranted] = useState(null)
   const [showLocationPrompt, setShowLocationPrompt] = useState(false)
   const [pendingTrip, setPendingTrip] = useState(null)
+  const [showInvite, setShowInvite] = useState(false)
 
   // Check location permission state on mount
   useEffect(() => {
@@ -205,6 +207,9 @@ export default function DriverDashboard() {
             </button>
           </div>
           <p className="text-xs text-text-secondary mt-1">Share this code with parents to link their children to your route.</p>
+          <Button variant="outline" size="sm" fullWidth className="mt-3" onClick={() => setShowInvite(true)}>
+            <UserPlus className="h-4 w-4" /> Invite Parents via SMS
+          </Button>
         </Card>
       )}
 
@@ -337,6 +342,13 @@ export default function DriverDashboard() {
           <Button variant="danger" fullWidth onClick={confirmEndTrip}>End Trip</Button>
         </div>
       </Modal>
+
+      <InviteModal
+        isOpen={showInvite}
+        onClose={() => setShowInvite(false)}
+        inviteType="driver_invites_parent"
+        routeCode={driverInfo?.route_code}
+      />
 
       {/* Notification toast */}
       {notification && (

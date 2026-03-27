@@ -8,13 +8,19 @@ import Input from '../../components/ui/Input'
 import { ROLES, validatePassword } from '../../lib/constants'
 
 export default function RegisterPage() {
+  // Pre-fill from invite link params (?role=driver&code=ABC123&ref=John)
+  const params = new URLSearchParams(window.location.search)
+  const inviteRole = params.get('role')
+  const inviteCode = params.get('code')
+  const inviteRef = params.get('ref')
+
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
-    role: ROLES.PARENT,
+    role: inviteRole === 'driver' ? ROLES.DRIVER : ROLES.PARENT,
   })
   const [showConsent, setShowConsent] = useState(false)
   const [consentAccepted, setConsentAccepted] = useState(false)
@@ -217,6 +223,13 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create Account</h1>
           <p className="text-gray-500 mt-2">Join SafeRide Kids today</p>
         </div>
+
+        {(inviteRef || inviteCode) && (
+          <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4 mb-4 text-center">
+            {inviteRef && <p className="text-sm font-medium text-text-primary">Invited by <strong>{decodeURIComponent(inviteRef)}</strong></p>}
+            {inviteCode && <p className="text-xs text-text-secondary mt-1">Route code <span className="font-mono font-bold text-primary">{inviteCode}</span> will be linked automatically</p>}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <form onSubmit={handleContinue} className="space-y-5">

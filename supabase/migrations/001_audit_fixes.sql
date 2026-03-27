@@ -206,3 +206,31 @@ CREATE POLICY "Users manage own notification prefs" ON public.notification_prefe
 -- ============================================
 
 ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS schedule TEXT DEFAULT 'both' CHECK (schedule IN ('morning', 'afternoon', 'both'));
+
+-- ============================================
+-- 11. Invites table
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS public.invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  inviter_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  phone TEXT NOT NULL,
+  inviter_name TEXT NOT NULL,
+  inviter_role TEXT,
+  invite_type TEXT CHECK (invite_type IN ('parent_invites_driver', 'driver_invites_parent', 'general')),
+  route_code TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'accepted', 'failed')),
+  twilio_sid TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.invites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own invites" ON public.invites
+  FOR ALL USING (auth.uid() = inviter_id OR public.get_user_role() = 'admin');
+
+CREATE POLICY "Service role can manage all invites" ON public.invites
+  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_invites_inviter ON public.invites(inviter_id);
+CREATE INDEX IF NOT EXISTS idx_invites_phone ON public.invites(phone);
