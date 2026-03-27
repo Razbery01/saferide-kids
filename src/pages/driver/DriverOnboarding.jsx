@@ -76,16 +76,31 @@ export default function DriverOnboarding() {
   }
 
   async function ensureUserProfile() {
-    // Verify the users row exists (required for drivers FK)
+    // Check if users row already exists
     const { data } = await supabase
       .from('users')
       .select('id')
       .eq('id', profile.id)
-      .single()
+      .maybeSingle()
 
     if (data) return true
 
-    // Profile row missing — create it
+    // Profile row missing — use RPC first (SECURITY DEFINER, bypasses RLS)
+    const trialEnd = new Date()
+    trialEnd.setDate(trialEnd.getDate() + 7)
+
+    const { error: rpcErr } = await supabase.rpc('create_user_profile', {
+      user_id: profile.id,
+      user_email: profile.email,
+      user_full_name: profile.full_name,
+      user_role: profile.role || 'driver',
+      user_phone: profile.phone || null,
+      user_trial_ends_at: trialEnd.toISOString(),
+    })
+
+    if (!rpcErr) return true
+
+    // RPC not available — try direct insert as fallback
     const { error: insertErr } = await supabase.from('users').insert({
       id: profile.id,
       email: profile.email,
@@ -93,22 +108,11 @@ export default function DriverOnboarding() {
       role: profile.role || 'driver',
       phone: profile.phone || null,
       subscription_tier: 'trial',
+      trial_ends_at: trialEnd.toISOString(),
       is_active: true,
     })
 
-    if (insertErr) {
-      // Try RPC fallback
-      const { error: rpcErr } = await supabase.rpc('create_user_profile', {
-        user_id: profile.id,
-        user_email: profile.email,
-        user_full_name: profile.full_name,
-        user_role: profile.role || 'driver',
-        user_phone: profile.phone || null,
-      })
-      if (rpcErr) return false
-    }
-
-    return true
+    return !insertErr
   }
 
   async function handleSubmit(e) {
