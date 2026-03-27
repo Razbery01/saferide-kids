@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import { FullPageLoader } from './components/ui/LoadingSpinner'
 import { initFirebase, requestNotificationPermission, onPushMessage } from './lib/firebase'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import MobileLayout from './components/layout/MobileLayout'
 import AdminLayout from './components/layout/AdminLayout'
@@ -78,6 +79,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <NotificationInit />
+        <PWAInstallPrompt />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />

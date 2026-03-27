@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import {
   Shield, MapPin, Bell, MessageSquare, Gauge, Users,
   AlertTriangle, ChevronRight, CheckCircle, Lock, Eye,
-  Star, ArrowRight, Zap, Heart, Menu, X, Smartphone
+  Star, ArrowRight, Zap, Heart, Menu, X, Smartphone, Download
 } from 'lucide-react'
 import Button from '../components/ui/Button'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 
 function scrollToSection(e, id) {
   e.preventDefault()
@@ -29,6 +30,7 @@ const plans = [
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const { canInstall, install } = usePWAInstall()
 
   return (
     <div className="min-h-screen bg-white">
@@ -45,6 +47,11 @@ export default function LandingPage() {
             <button onClick={(e) => scrollToSection(e, 'pricing')} className="text-sm text-text-secondary hover:text-text-primary transition font-medium">Pricing</button>
           </div>
           <div className="flex items-center gap-2">
+            {canInstall && (
+              <button onClick={install} className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition">
+                <Download className="h-4 w-4" /> Install App
+              </button>
+            )}
             <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Sign In</Button></Link>
             <Link to="/register" className="hidden sm:block"><Button size="sm" rounded>Get Started</Button></Link>
             <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center hover:bg-black/5">
@@ -57,6 +64,11 @@ export default function LandingPage() {
             <button onClick={(e) => { scrollToSection(e, 'features'); setMenuOpen(false) }} className="block w-full text-left text-sm font-medium text-text-secondary py-2">Features</button>
             <button onClick={(e) => { scrollToSection(e, 'how-it-works'); setMenuOpen(false) }} className="block w-full text-left text-sm font-medium text-text-secondary py-2">How It Works</button>
             <button onClick={(e) => { scrollToSection(e, 'pricing'); setMenuOpen(false) }} className="block w-full text-left text-sm font-medium text-text-secondary py-2">Pricing</button>
+            {canInstall && (
+              <button onClick={() => { install(); setMenuOpen(false) }} className="block w-full text-left text-sm font-medium text-primary py-2 flex items-center gap-2">
+                <Download className="h-4 w-4" /> Install App
+              </button>
+            )}
             <div className="flex gap-2 pt-2 border-t border-black/5">
               <Link to="/login" className="flex-1"><Button variant="outline" size="sm" fullWidth>Sign In</Button></Link>
               <Link to="/register" className="flex-1"><Button size="sm" fullWidth rounded>Get Started</Button></Link>
@@ -275,6 +287,35 @@ export default function LandingPage() {
                   )
                 })}
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Download App */}
+      <section className="py-16 bg-white px-5">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-gradient-to-br from-primary/5 to-emerald-50 rounded-3xl p-8 sm:p-12 flex flex-col sm:flex-row items-center gap-8">
+            <div className="shrink-0">
+              <img src="/icons/icon-192x192.png" alt="SafeRide Kids App" className="w-24 h-24 rounded-3xl shadow-lg" />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h2 className="text-2xl font-bold text-text-primary tracking-tight">Get the SafeRide Kids app</h2>
+              <p className="text-text-secondary mt-2 max-w-md">Install SafeRide Kids on your phone for instant access to GPS tracking, push notifications, and offline support. No app store needed.</p>
+            </div>
+            <div className="shrink-0 flex flex-col gap-2">
+              {canInstall ? (
+                <Button size="lg" rounded onClick={install}>
+                  <Download className="h-5 w-5" /> Install Now
+                </Button>
+              ) : (
+                <Link to="/register">
+                  <Button size="lg" rounded>
+                    <ArrowRight className="h-5 w-5" /> Get Started
+                  </Button>
+                </Link>
+              )}
+              <p className="text-xs text-text-muted text-center">Works on Android &amp; iOS</p>
             </div>
           </div>
         </div>
