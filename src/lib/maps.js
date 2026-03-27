@@ -1,39 +1,50 @@
-import { Loader } from '@googlemaps/js-api-loader'
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 
-let loader = null
-let google = null
+let initialized = false
+let mapsLib = null
+let markerLib = null
+
+async function init() {
+  if (initialized) return
+
+  setOptions({
+    apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    version: 'weekly',
+  })
+
+  initialized = true
+}
 
 export async function loadGoogleMaps() {
-  if (google) return google
+  await init()
 
-  if (!loader) {
-    loader = new Loader({
-      apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-      version: 'weekly',
-      libraries: ['places', 'geometry'],
-    })
+  if (!mapsLib) {
+    mapsLib = await importLibrary('maps')
   }
 
-  google = await loader.load()
+  return mapsLib
+}
 
-  // Ensure google is also on window for Google Places Autocomplete widget
-  if (typeof window !== 'undefined' && !window.google) {
-    window.google = google
-  }
+export async function loadPlaces() {
+  await init()
+  return await importLibrary('places')
+}
 
-  return google
+export async function loadGeometry() {
+  await init()
+  return await importLibrary('geometry')
 }
 
 export function getGoogle() {
-  return google
+  return window.google
 }
 
 export function createMap(element, options = {}) {
-  if (!google) throw new Error('Google Maps not loaded')
+  if (!mapsLib) throw new Error('Google Maps not loaded — call loadGoogleMaps() first')
 
   const defaultCenter = { lat: -29.8587, lng: 31.0218 } // Durban, KZN
 
-  return new google.maps.Map(element, {
+  return new mapsLib.Map(element, {
     center: defaultCenter,
     zoom: 14,
     disableDefaultUI: true,
@@ -45,13 +56,13 @@ export function createMap(element, options = {}) {
 }
 
 export function createVehicleMarker(map, position) {
-  if (!google) return null
+  if (!window.google?.maps) return null
 
-  return new google.maps.Marker({
+  return new window.google.maps.Marker({
     map,
     position,
     icon: {
-      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
       scale: 7,
       fillColor: '#0D9468',
       fillOpacity: 1,
@@ -64,9 +75,9 @@ export function createVehicleMarker(map, position) {
 }
 
 export function createPinMarker(map, position, label, color = '#3B82F6') {
-  if (!google) return null
+  if (!window.google?.maps) return null
 
-  return new google.maps.Marker({
+  return new window.google.maps.Marker({
     map,
     position,
     label: {
@@ -76,7 +87,7 @@ export function createPinMarker(map, position, label, color = '#3B82F6') {
       fontSize: '12px',
     },
     icon: {
-      path: google.maps.SymbolPath.CIRCLE,
+      path: window.google.maps.SymbolPath.CIRCLE,
       scale: 14,
       fillColor: color,
       fillOpacity: 1,
@@ -88,11 +99,11 @@ export function createPinMarker(map, position, label, color = '#3B82F6') {
 }
 
 export function updateMarkerPosition(marker, position, smooth = true) {
-  if (!marker || !google) return
+  if (!marker || !window.google?.maps) return
 
   if (smooth) {
     const start = marker.getPosition()
-    const end = new google.maps.LatLng(position.lat, position.lng)
+    const end = new window.google.maps.LatLng(position.lat, position.lng)
     const steps = 10
     let step = 0
 
@@ -109,9 +120,9 @@ export function updateMarkerPosition(marker, position, smooth = true) {
 }
 
 export function drawRoute(map, path, color = '#0D9468') {
-  if (!google) return null
+  if (!window.google?.maps) return null
 
-  return new google.maps.Polyline({
+  return new window.google.maps.Polyline({
     map,
     path,
     strokeColor: color,
@@ -121,9 +132,9 @@ export function drawRoute(map, path, color = '#0D9468') {
 }
 
 export function fitBounds(map, positions) {
-  if (!google || !positions.length) return
+  if (!window.google?.maps || !positions.length) return
 
-  const bounds = new google.maps.LatLngBounds()
+  const bounds = new window.google.maps.LatLngBounds()
   positions.forEach(pos => bounds.extend(pos))
   map.fitBounds(bounds, { padding: 60 })
 }

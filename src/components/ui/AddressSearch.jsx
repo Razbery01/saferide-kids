@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { MapPin } from 'lucide-react'
-import { loadGoogleMaps, getGoogle } from '../../lib/maps'
+import { loadGoogleMaps, loadPlaces } from '../../lib/maps'
 
 export default function AddressSearch({ label, placeholder, value, onChange, required = false }) {
   const inputRef = useRef(null)
@@ -10,15 +10,22 @@ export default function AddressSearch({ label, placeholder, value, onChange, req
   const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
-    loadGoogleMaps()
-      .then(() => setMapsLoaded(true))
-      .catch(() => setLoadError(true))
+    async function init() {
+      try {
+        await loadGoogleMaps()
+        await loadPlaces()
+        setMapsLoaded(true)
+      } catch {
+        setLoadError(true)
+      }
+    }
+    init()
   }, [])
 
   useEffect(() => {
     if (!mapsLoaded || !inputRef.current || autocompleteRef.current) return
 
-    const g = getGoogle() || window.google
+    const g = window.google
     if (!g?.maps?.places) {
       setLoadError(true)
       return
@@ -44,8 +51,7 @@ export default function AddressSearch({ label, placeholder, value, onChange, req
 
       autocompleteRef.current = autocomplete
 
-      // Fix z-index: Google Places dropdown renders in a .pac-container
-      // that needs to be above our Modal (z-50)
+      // Google Places dropdown needs to render above our Modal (z-50)
       const style = document.createElement('style')
       style.textContent = '.pac-container { z-index: 9999 !important; }'
       document.head.appendChild(style)
