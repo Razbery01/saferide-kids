@@ -8,7 +8,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   if (loading) return <FullPageLoader />
   if (!user) return <Navigate to="/login" replace />
   if (!profile) return <FullPageLoader />
-  if (allowedRoles && !allowedRoles.includes(profile.role)) {
+  // Admins can access any role's pages for testing
+  if (allowedRoles && !allowedRoles.includes(profile.role) && profile.role !== 'admin') {
     const redirectMap = { parent: '/parent', driver: '/driver', admin: '/admin' }
     return <Navigate to={redirectMap[profile.role] || '/login'} replace />
   }

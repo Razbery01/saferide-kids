@@ -1,7 +1,7 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Car, MapPin, Shield,
-  CreditCard, FileText, LogOut, Baby
+  CreditCard, FileText, LogOut, Baby, Eye
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -18,6 +18,7 @@ const links = [
 
 export default function AdminSidebar() {
   const { signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <aside className="fixed inset-y-0 left-0 w-[260px] bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col z-30">
@@ -50,6 +51,28 @@ export default function AdminSidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Role switcher for testing */}
+      <div className="px-3 pb-2">
+        <p className="px-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          <Eye className="h-3 w-3 inline mr-1" />View As
+        </p>
+        <div className="flex gap-1.5 px-1">
+          {[
+            { label: 'Parent', path: '/parent', color: 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' },
+            { label: 'Driver', path: '/driver', color: 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' },
+            { label: 'Admin', path: '/admin', color: 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' },
+          ].map(r => (
+            <button
+              key={r.path}
+              onClick={() => navigate(r.path)}
+              className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition ${r.color}`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="p-3 border-t border-white/5">
         <button

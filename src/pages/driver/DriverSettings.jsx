@@ -130,7 +130,7 @@ export default function DriverSettings() {
     if (file.size > 2 * 1024 * 1024) { setNotification('Image must be under 2MB'); return }
     setAvatarUploading(true)
     const ext = file.name.split('.').pop()
-    const path = `avatars/${profile.id}.${ext}`
+    const path = `${profile.id}/avatar.${ext}`
     const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
     if (uploadErr) { setNotification('Failed to upload photo.'); setAvatarUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
