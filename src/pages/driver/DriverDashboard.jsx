@@ -156,10 +156,15 @@ export default function DriverDashboard() {
   async function confirmEndTrip() {
     setShowEndTrip(false)
 
-    await supabase.from('trips').update({
+    const { error: tripErr } = await supabase.from('trips').update({
       status: 'completed',
       ended_at: new Date().toISOString(),
     }).eq('id', activeTrip.id)
+
+    if (tripErr) {
+      setNotification('Failed to end trip. Please try again.')
+      return
+    }
 
     await supabase.from('trip_events').insert({
       trip_id: activeTrip.id,

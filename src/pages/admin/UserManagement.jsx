@@ -413,7 +413,7 @@ export default function UserManagement() {
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" fullWidth onClick={() => { setViewUser(null); openEdit(viewUser) }}>
+              <Button variant="outline" fullWidth onClick={() => { const u = viewUser; setViewUser(null); openEdit(u) }}>
                 <Pencil className="h-4 w-4" /> Edit User
               </Button>
               <Button variant="outline" fullWidth onClick={() => setViewUser(null)}>

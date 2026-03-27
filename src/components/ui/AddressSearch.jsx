@@ -1,48 +1,63 @@
 import { useRef, useEffect, useState } from 'react'
 import { MapPin } from 'lucide-react'
-import { loadGoogleMaps } from '../../lib/maps'
+import { loadGoogleMaps, getGoogle } from '../../lib/maps'
 
 export default function AddressSearch({ label, placeholder, value, onChange, required = false }) {
   const inputRef = useRef(null)
   const autocompleteRef = useRef(null)
   const [inputValue, setInputValue] = useState(value?.address || '')
   const [mapsLoaded, setMapsLoaded] = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     loadGoogleMaps()
       .then(() => setMapsLoaded(true))
-      .catch(() => {})
+      .catch(() => setLoadError(true))
   }, [])
 
   useEffect(() => {
     if (!mapsLoaded || !inputRef.current || autocompleteRef.current) return
 
-    const google = window.google
-    if (!google?.maps?.places) return
+    const g = getGoogle() || window.google
+    if (!g?.maps?.places) {
+      setLoadError(true)
+      return
+    }
 
-    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: 'za' },
-      fields: ['formatted_address', 'geometry', 'name'],
-    })
+    try {
+      const autocomplete = new g.maps.places.Autocomplete(inputRef.current, {
+        componentRestrictions: { country: 'za' },
+        fields: ['formatted_address', 'geometry', 'name'],
+      })
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace()
-      if (!place.geometry) return
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace()
+        if (!place.geometry) return
 
-      const address = place.formatted_address || place.name || ''
-      const lat = place.geometry.location.lat()
-      const lng = place.geometry.location.lng()
+        const address = place.formatted_address || place.name || ''
+        const lat = place.geometry.location.lat()
+        const lng = place.geometry.location.lng()
 
-      setInputValue(address)
-      onChange({ address, lat, lng })
-    })
+        setInputValue(address)
+        onChange({ address, lat, lng })
+      })
 
-    autocompleteRef.current = autocomplete
+      autocompleteRef.current = autocomplete
+
+      // Fix z-index: Google Places dropdown renders in a .pac-container
+      // that needs to be above our Modal (z-50)
+      const style = document.createElement('style')
+      style.textContent = '.pac-container { z-index: 9999 !important; }'
+      document.head.appendChild(style)
+
+      return () => { document.head.removeChild(style) }
+    } catch {
+      setLoadError(true)
+    }
   }, [mapsLoaded, onChange])
 
   function handleManualChange(e) {
     setInputValue(e.target.value)
-    // If user clears the field, clear coordinates too
     if (!e.target.value.trim()) {
       onChange({ address: '', lat: null, lng: null })
     }
@@ -64,11 +79,12 @@ export default function AddressSearch({ label, placeholder, value, onChange, req
           onChange={handleManualChange}
           placeholder={placeholder || 'Search for an address...'}
           required={required}
+          autoComplete="off"
           className="w-full rounded-xl border border-border/80 bg-white pl-11 pr-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 hover:border-gray-300"
         />
       </div>
-      {!mapsLoaded && (
-        <p className="text-xs text-text-muted">Type an address manually if search is unavailable.</p>
+      {loadError && (
+        <p className="text-xs text-text-muted">Address search unavailable. Type the address manually.</p>
       )}
     </div>
   )

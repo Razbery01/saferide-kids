@@ -87,8 +87,8 @@ export default function ChildRouteManagement() {
       setReassignChild(null)
       setSelectedRouteId('')
       fetchData()
-    } catch (err) {
-      console.error('Reassign error:', err.message)
+    } catch {
+      // Reassignment failed silently — fetchData will show current state
     } finally {
       setReassigning(false)
     }

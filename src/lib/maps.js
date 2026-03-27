@@ -15,6 +15,16 @@ export async function loadGoogleMaps() {
   }
 
   google = await loader.load()
+
+  // Ensure google is also on window for Google Places Autocomplete widget
+  if (typeof window !== 'undefined' && !window.google) {
+    window.google = google
+  }
+
+  return google
+}
+
+export function getGoogle() {
   return google
 }
 

@@ -76,8 +76,7 @@ function TripRouteMap({ tripId, events }) {
 
         // Auto-fit to show the full route
         fitBounds(map, allPoints)
-      } catch (err) {
-        console.error('Trip map error:', err)
+      } catch {
         if (mounted) setMapError('Unable to load map')
       }
     }
@@ -134,8 +133,8 @@ export default function TripHistory() {
         .limit(50)
 
       setTrips(data || [])
-    } catch (err) {
-      console.error('Error fetching trips:', err)
+    } catch {
+      // Trip fetch failed
     } finally {
       setLoading(false)
     }

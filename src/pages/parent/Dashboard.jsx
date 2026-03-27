@@ -74,8 +74,8 @@ export default function ParentDashboard() {
           setChildStatuses(statuses)
         }
       }
-    } catch (err) {
-      console.error('Error fetching dashboard:', err)
+    } catch {
+      // Dashboard fetch failed — show empty state
     } finally {
       setLoading(false)
     }

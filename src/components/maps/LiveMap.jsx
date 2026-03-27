@@ -50,8 +50,7 @@ export default function LiveMap({
         }
 
         setMapReady(true)
-      } catch (err) {
-        console.error('Map init error:', err)
+      } catch {
         setError('Unable to load map')
       }
     }
