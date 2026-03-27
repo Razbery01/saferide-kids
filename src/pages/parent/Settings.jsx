@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { initiatePayment, PLAN_DETAILS } from '../../lib/payfast'
@@ -7,7 +7,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import Badge from '../../components/ui/Badge'
-import { User, Plus, Trash2, Link2, CreditCard, Shield, Bell, Download, AlertTriangle, Phone, Lock, Mail } from 'lucide-react'
+import { User, Plus, Trash2, Link2, CreditCard, Shield, Bell, Download, AlertTriangle, Phone, Lock, Mail, Camera, Pencil } from 'lucide-react'
 import { SPEED_THRESHOLD_DEFAULT, validateRouteCode } from '../../lib/constants'
 
 export default function ParentSettings() {
@@ -24,6 +24,10 @@ export default function ParentSettings() {
   const [error, setError] = useState('')
   const [notification, setNotification] = useState('')
   const [showRemoveChild, setShowRemoveChild] = useState(null)
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState({ full_name: '', phone: '' })
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef(null)
 
   // Emergency contacts state
   const [emergencyContacts, setEmergencyContacts] = useState([])
@@ -191,6 +195,33 @@ export default function ParentSettings() {
     setNotification('Speed alert threshold updated.')
   }
 
+  async function handleAvatarUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+    if (file.size > 2 * 1024 * 1024) { setNotification('Image must be under 2MB'); return }
+    setAvatarUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `avatars/${profile.id}.${ext}`
+    const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (uploadErr) { setNotification('Failed to upload photo.'); setAvatarUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', profile.id)
+    setNotification('Profile photo updated.')
+    setAvatarUploading(false)
+  }
+
+  async function handleSaveProfile(e) {
+    e.preventDefault()
+    setSaving(true)
+    const { error } = await supabase.from('users').update({
+      full_name: profileForm.full_name.trim(),
+      phone: profileForm.phone.trim() || null,
+    }).eq('id', profile.id)
+    if (!error) { setNotification('Profile updated.'); setShowEditProfile(false) }
+    else setError('Failed to update profile.')
+    setSaving(false)
+  }
+
   // Emergency contacts
   useEffect(() => { fetchEmergencyContacts() }, [profile])
 
@@ -303,14 +334,48 @@ export default function ParentSettings() {
     <div className="space-y-4">
       {/* Profile */}
       <Card>
-        <CardTitle>Profile</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Profile</CardTitle>
+          <button
+            onClick={() => { setProfileForm({ full_name: profile?.full_name || '', phone: profile?.phone || '' }); setShowEditProfile(true) }}
+            className="p-2 rounded-lg hover:bg-gray-100 text-text-secondary hover:text-primary transition"
+            title="Edit Profile"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </div>
         <div className="flex items-center gap-3 mt-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-emerald-100 rounded-2xl flex items-center justify-center">
-            <User className="h-6 w-6 text-primary" />
+          <div className="relative">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.full_name} className="w-14 h-14 rounded-2xl object-cover" />
+            ) : (
+              <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-emerald-100 rounded-2xl flex items-center justify-center text-primary font-bold text-lg">
+                {profile?.full_name?.charAt(0)}
+              </div>
+            )}
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-border rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition"
+            >
+              {avatarUploading ? (
+                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="h-3.5 w-3.5 text-text-secondary" />
+              )}
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
           </div>
           <div>
             <p className="font-semibold text-text-primary">{profile?.full_name}</p>
             <p className="text-sm text-text-secondary">{profile?.email}</p>
+            {profile?.phone && <p className="text-sm text-text-secondary">{profile.phone}</p>}
           </div>
         </div>
       </Card>
@@ -595,6 +660,16 @@ export default function ParentSettings() {
           <p className="text-sm text-text-secondary">A confirmation email will be sent to your new address.</p>
           <Input label="New Email Address" type="email" value={emailForm.newEmail} onChange={(e) => setEmailForm({ newEmail: e.target.value })} required />
           <Button type="submit" fullWidth loading={saving}>Update Email</Button>
+        </form>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} title="Edit Profile">
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Input label="Full Name" value={profileForm.full_name} onChange={(e) => setProfileForm(f => ({ ...f, full_name: e.target.value }))} required />
+          <Input label="Phone" type="tel" value={profileForm.phone} onChange={(e) => setProfileForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. 082 123 4567" />
+          <Button type="submit" fullWidth loading={saving}>Save Changes</Button>
         </form>
       </Modal>
 

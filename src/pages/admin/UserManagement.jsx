@@ -5,7 +5,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import Modal from '../../components/ui/Modal'
-import { Search, UserX, UserCheck, Pencil, Trash2, Eye, Plus, Users } from 'lucide-react'
+import { Search, UserX, UserCheck, Pencil, Trash2, Eye, Plus, Users, ArrowUpCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
 const ROLES = ['parent', 'driver', 'admin']
@@ -22,6 +22,8 @@ export default function UserManagement() {
   const [editUser, setEditUser] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [deleteUser, setDeleteUser] = useState(null)
+  const [upgradeUser, setUpgradeUser] = useState(null)
+  const [upgradeTier, setUpgradeTier] = useState('parent_basic')
 
   // Form state
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', role: 'parent', subscription_tier: 'trial' })
@@ -196,6 +198,24 @@ export default function UserManagement() {
     }
   }
 
+  async function handleQuickUpgrade() {
+    if (!upgradeUser) return
+    setSaving(true)
+    try {
+      const { error: updateErr } = await supabase.from('users').update({
+        subscription_tier: upgradeTier,
+      }).eq('id', upgradeUser.id)
+      if (updateErr) throw updateErr
+      setNotification(`${upgradeUser.full_name} upgraded to ${upgradeTier.replace(/_/g, ' ')}.`)
+      setUpgradeUser(null)
+      fetchUsers()
+    } catch (err) {
+      setError(err.message || 'Failed to upgrade user.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const filtered = users.filter(u =>
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -308,6 +328,13 @@ export default function UserManagement() {
                         </button>
                         <button onClick={() => openEdit(user)} className="p-1.5 rounded-lg hover:bg-blue-50 text-text-secondary hover:text-blue-600 transition" title="Edit">
                           <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => { setUpgradeUser(user); setUpgradeTier(user.subscription_tier || 'parent_basic') }}
+                          className="p-1.5 rounded-lg hover:bg-emerald-50 text-text-secondary hover:text-emerald-600 transition"
+                          title="Upgrade Account"
+                        >
+                          <ArrowUpCircle className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => toggleActive(user)}
@@ -484,8 +511,64 @@ export default function UserManagement() {
                 {TIERS.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
               </select>
             </div>
+            <div className="bg-primary/5 rounded-xl p-3 mt-2">
+              <p className="text-xs font-medium text-text-secondary mb-2">Quick Upgrade (no payment required)</p>
+              <div className="flex gap-2">
+                {['parent_basic', 'parent_premium', 'driver_pro'].map(tier => (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, subscription_tier: tier }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                      form.subscription_tier === tier
+                        ? 'bg-primary text-white'
+                        : 'bg-white border border-border text-text-secondary hover:border-primary'
+                    }`}
+                  >
+                    {tier.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Button type="submit" fullWidth loading={saving}>Save Changes</Button>
           </form>
+        )}
+      </Modal>
+
+      {/* ── Upgrade User Modal ── */}
+      <Modal isOpen={!!upgradeUser} onClose={() => setUpgradeUser(null)} title="Upgrade Account" size="sm">
+        {upgradeUser && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-semibold text-sm">
+                {upgradeUser.full_name?.charAt(0)}
+              </div>
+              <div>
+                <p className="font-medium text-sm text-text-primary">{upgradeUser.full_name}</p>
+                <p className="text-xs text-text-secondary">Current: {upgradeUser.subscription_tier}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-text-secondary mb-2">Select new tier (no payment required)</p>
+              <div className="flex flex-col gap-2">
+                {['parent_basic', 'parent_premium', 'driver_pro'].map(tier => (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => setUpgradeTier(tier)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition text-left ${
+                      upgradeTier === tier
+                        ? 'bg-primary text-white'
+                        : 'bg-white border border-border text-text-secondary hover:border-primary'
+                    }`}
+                  >
+                    {tier.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button fullWidth loading={saving} onClick={handleQuickUpgrade}>Save Upgrade</Button>
+          </div>
         )}
       </Modal>
 
