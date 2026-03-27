@@ -42,7 +42,10 @@ export default function UserManagement() {
 
   async function fetchUsers() {
     setLoading(true)
-    let query = supabase.from('users').select('*').order('created_at', { ascending: false }).limit(200)
+    let query = supabase.from('users').select('*')
+      .not('email', 'like', '%@deleted.local')
+      .order('created_at', { ascending: false })
+      .limit(200)
     if (roleFilter !== 'all') query = query.eq('role', roleFilter)
     const { data } = await query
     setUsers(data || [])
@@ -177,16 +180,32 @@ export default function UserManagement() {
     setSaving(true)
 
     try {
-      // Try server-side cascade delete first
-      const { error: rpcErr } = await supabase.rpc('delete_user_data', { target_user_id: deleteUser.id })
+      const userId = deleteUser.id
+      const userName = deleteUser.full_name
+
+      // Cascade delete all related data first
+      const { error: rpcErr } = await supabase.rpc('delete_user_data', { target_user_id: userId })
 
       if (rpcErr) {
-        // Fallback: just deactivate
-        const { error: updateErr } = await supabase.from('users').update({ is_active: false }).eq('id', deleteUser.id)
-        if (updateErr) throw updateErr
-        setNotification(`User "${deleteUser.full_name}" deactivated (full deletion requires server function).`)
+        // RPC not available — manually clean up what we can
+        await supabase.from('emergency_contacts').delete().eq('user_id', userId)
+        await supabase.from('notification_preferences').delete().eq('user_id', userId)
+        await supabase.from('invites').delete().eq('inviter_id', userId)
+        await supabase.from('consent_records').delete().eq('user_id', userId)
+        await supabase.from('user_push_tokens').delete().eq('user_id', userId)
+        await supabase.from('subscriptions').delete().eq('user_id', userId)
+        await supabase.from('messages').delete().eq('sender_id', userId)
+        await supabase.from('messages').delete().eq('receiver_id', userId)
+      }
+
+      // Now hard-delete the user row itself
+      const { error: deleteErr } = await supabase.from('users').delete().eq('id', userId)
+      if (deleteErr) {
+        // If hard delete fails (FK constraints), fall back to anonymize
+        await supabase.from('users').update({ email: `deleted_${userId}@deleted.local`, full_name: 'Deleted User', phone: null, avatar_url: null, is_active: false }).eq('id', userId)
+        setNotification(`User "${userName}" anonymized. Some linked records may remain.`)
       } else {
-        setNotification(`User "${deleteUser.full_name}" and all associated data deleted.`)
+        setNotification(`User "${userName}" permanently deleted.`)
       }
 
       setDeleteUser(null)
