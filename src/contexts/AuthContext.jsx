@@ -153,19 +153,21 @@ export function AuthProvider({ children }) {
       })
       if (profileError) throw profileError
     } else if (data.user && !data.session) {
-      // Email confirmation is enabled — use a database function to create the profile
+      // Email confirmation enabled — try to create profile now, but don't
+      // block registration if it fails. fetchProfile will retry on first login.
       const trialEnd = new Date()
       trialEnd.setDate(trialEnd.getDate() + 7)
 
-      const { error: profileError } = await supabase.rpc('create_user_profile', {
+      await supabase.rpc('create_user_profile', {
         user_id: data.user.id,
         user_email: email,
         user_full_name: fullName,
         user_role: role,
         user_phone: phone || null,
         user_trial_ends_at: trialEnd.toISOString(),
+      }).catch(() => {
+        // Profile creation failed — will be retried on first login via fetchProfile
       })
-      if (profileError) throw profileError
     }
 
     return data
