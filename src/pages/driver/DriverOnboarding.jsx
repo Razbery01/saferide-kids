@@ -75,57 +75,24 @@ export default function DriverOnboarding() {
     return urls
   }
 
-  async function ensureUserProfile() {
-    // Check if users row already exists
-    const { data } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', profile.id)
-      .maybeSingle()
-
-    if (data) return true
-
-    // Profile row missing — use RPC first (SECURITY DEFINER, bypasses RLS)
-    const trialEnd = new Date()
-    trialEnd.setDate(trialEnd.getDate() + 7)
-
-    const { error: rpcErr } = await supabase.rpc('create_user_profile', {
-      user_id: profile.id,
-      user_email: profile.email,
-      user_full_name: profile.full_name,
-      user_role: profile.role || 'driver',
-      user_phone: profile.phone || null,
-      user_trial_ends_at: trialEnd.toISOString(),
-    })
-
-    if (!rpcErr) return true
-
-    // RPC not available — try direct insert as fallback
-    const { error: insertErr } = await supabase.from('users').insert({
-      id: profile.id,
-      email: profile.email,
-      full_name: profile.full_name,
-      role: profile.role || 'driver',
-      phone: profile.phone || null,
-      subscription_tier: 'trial',
-      trial_ends_at: trialEnd.toISOString(),
-      is_active: true,
-    })
-
-    return !insertErr
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
     setSaving(true)
     setError('')
 
     try {
-      // Ensure the user profile row exists (FK requirement)
-      const profileExists = await ensureUserProfile()
-      if (!profileExists) {
-        throw new Error('Could not create your profile. Please sign out and sign in again.')
-      }
+      // Ensure user profile exists via RPC (SECURITY DEFINER, bypasses RLS)
+      const trialEnd = new Date()
+      trialEnd.setDate(trialEnd.getDate() + 7)
+
+      await supabase.rpc('create_user_profile', {
+        user_id: profile.id,
+        user_email: profile.email,
+        user_full_name: profile.full_name,
+        user_role: profile.role || 'driver',
+        user_phone: profile.phone || null,
+        user_trial_ends_at: trialEnd.toISOString(),
+      })
 
       const documentUrls = await uploadFiles()
 
@@ -133,6 +100,30 @@ export default function DriverOnboarding() {
       let lastErr = null
       for (let attempt = 0; attempt < 3; attempt++) {
         const routeCode = generateRouteCode()
+
+        // Use RPC to bypass RLS on drivers table
+        const { error: rpcErr } = await supabase.rpc('create_driver_profile', {
+          driver_id: profile.id,
+          driver_id_number: form.id_number,
+          driver_licence_number: form.licence_number,
+          driver_vehicle_registration: form.vehicle_registration,
+          driver_vehicle_description: form.vehicle_description,
+          driver_route_code: routeCode,
+          driver_documents_url: documentUrls,
+        })
+
+        if (!rpcErr) {
+          setStep(3)
+          return
+        }
+
+        // If it's a unique constraint violation on route_code, retry
+        if (rpcErr.message?.includes('route_code') || rpcErr.code === '23505') {
+          lastErr = rpcErr
+          continue
+        }
+
+        // RPC not available — fall back to direct upsert
         const { error: upsertErr } = await supabase.from('drivers').upsert({
           id: profile.id,
           id_number: form.id_number,
@@ -149,14 +140,7 @@ export default function DriverOnboarding() {
           return
         }
 
-        // If it's a unique constraint violation on route_code, retry
-        if (upsertErr.message?.includes('route_code') || upsertErr.code === '23505') {
-          lastErr = upsertErr
-          continue
-        }
-
-        // Any other error, throw immediately
-        throw upsertErr
+        lastErr = upsertErr
       }
 
       throw lastErr || new Error('Failed to generate a unique route code. Please try again.')
